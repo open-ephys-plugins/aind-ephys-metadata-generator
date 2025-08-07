@@ -25,14 +25,6 @@
 
 #include "EphysMetadataGeneratorEditor.h"
 
-EphysMetadataGenerator::EphysMetadataGenerator()
-    : GenericProcessor ("Ephys Metadata Generator")
-{
-}
-
-EphysMetadataGenerator::~EphysMetadataGenerator()
-{
-}
 
 AudioProcessorEditor* EphysMetadataGenerator::createEditor()
 {
@@ -40,33 +32,7 @@ AudioProcessorEditor* EphysMetadataGenerator::createEditor()
     return editor.get();
 }
 
-void EphysMetadataGenerator::registerParameters()
-{
-    // Register any parameters here if needed
-    // For example: addSelectedChannelsParameter (Parameter::STREAM_SCOPE,
-    //                                 channels,
-    //                                 Channels,
-    //                                 Selected channels to use);
-}
-
 void EphysMetadataGenerator::updateSettings()
-{
-}
-
-void EphysMetadataGenerator::process (AudioBuffer<float>& buffer)
-{
-    checkForEvents (true);
-}
-
-void EphysMetadataGenerator::handleTTLEvent (TTLEventPtr event)
-{
-}
-
-void EphysMetadataGenerator::handleSpike (SpikePtr spike)
-{
-}
-
-void EphysMetadataGenerator::handleBroadcastMessage (const String& message, const int64 systemTimeMillis)
 {
 }
 
