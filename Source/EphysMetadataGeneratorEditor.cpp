@@ -29,12 +29,6 @@
 EphysMetadataGeneratorEditor::EphysMetadataGeneratorEditor (GenericProcessor* p)
     : VisualizerEditor (p, "Ephys Metadata Generator", 240)
 {
-    // Add parameter editors here. Note the parameters
-    // must be created in the processor's registerParameters() method.
-    // For example:
-    // addSelectedChannelsParameterEditor(Parameter::STREAM_SCOPE,
-    //                                    "channels",
-    //                                    15, 40);
 }
 
 Visualizer* EphysMetadataGeneratorEditor::createNewCanvas()
