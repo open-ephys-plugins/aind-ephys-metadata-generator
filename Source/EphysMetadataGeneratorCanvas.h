@@ -21,26 +21,26 @@
 
 */
 
-#ifndef VISUALIZERCANVAS_H_INCLUDED
-#define VISUALIZERCANVAS_H_INCLUDED
+#ifndef EPHYSMETADATAGENERATORCANVAS_H_INCLUDED
+#define EPHYSMETADATAGENERATORCANVAS_H_INCLUDED
 
 #include <VisualizerWindowHeaders.h>
 
-class VisualizerPlugin;
+class EphysMetadataGenerator;
 
 /**
 * 
 	Draws data in real time
 
 */
-class VisualizerPluginCanvas : public Visualizer
+class EphysMetadataGeneratorCanvas : public Visualizer
 {
 public:
     /** Constructor */
-    VisualizerPluginCanvas (VisualizerPlugin* processor);
+    EphysMetadataGeneratorCanvas (EphysMetadataGenerator* processor);
 
     /** Destructor */
-    ~VisualizerPluginCanvas();
+    ~EphysMetadataGeneratorCanvas();
 
     /** Updates boundaries of sub-components whenever the canvas size changes */
     void resized() override;
@@ -59,10 +59,10 @@ public:
 
 private:
     /** Pointer to the processor class */
-    VisualizerPlugin* processor;
+    EphysMetadataGenerator* processor;
 
     /** Generates an assertion if this class leaks */
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (VisualizerPluginCanvas);
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (EphysMetadataGeneratorCanvas);
 };
 
-#endif // SPECTRUMCANVAS_H_INCLUDED
+#endif // EPHYSMETADATAGENERATORCANVAS_H_INCLUDED

@@ -22,32 +22,32 @@
 */
 
 //This prevents include loops. We recommend changing the macro to a name suitable for your plugin
-#ifndef VISUALIZERPLUGINEDITOR_H_DEFINED
-#define VISUALIZERPLUGINEDITOR_H_DEFINED
+#ifndef EPHYSMETADATAGENERATOREDITOR_H_DEFINED
+#define EPHYSMETADATAGENERATOREDITOR_H_DEFINED
 
 #include <VisualizerEditorHeaders.h>
 
 /** 
-	The editor for the VisualizerPlugin
+	The editor for the EphysMetadataGenerator
 
 	Includes buttons for opening the canvas in a tab or window
 */
 
-class VisualizerPluginEditor : public VisualizerEditor
+class EphysMetadataGeneratorEditor : public VisualizerEditor
 {
 public:
     /** Constructor */
-    VisualizerPluginEditor (GenericProcessor* parentNode);
+    EphysMetadataGeneratorEditor (GenericProcessor* parentNode);
 
     /** Destructor */
-    ~VisualizerPluginEditor() {}
+    ~EphysMetadataGeneratorEditor() {}
 
     /** Creates the canvas */
     Visualizer* createNewCanvas();
 
 private:
     /** Generates an assertion if this class leaks */
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (VisualizerPluginEditor);
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (EphysMetadataGeneratorEditor);
 };
 
-#endif // VISUALIZERPLUGINEDITOR_H_DEFINED
+#endif // EPHYSMETADATAGENERATOREDITOR_H_DEFINED

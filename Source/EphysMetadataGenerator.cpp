@@ -21,26 +21,26 @@
 
 */
 
-#include "VisualizerPlugin.h"
+#include "EphysMetadataGenerator.h"
 
-#include "VisualizerPluginEditor.h"
+#include "EphysMetadataGeneratorEditor.h"
 
-VisualizerPlugin::VisualizerPlugin()
-    : GenericProcessor ("Visualizer Plugin")
+EphysMetadataGenerator::EphysMetadataGenerator()
+    : GenericProcessor ("Ephys Metadata Generator")
 {
 }
 
-VisualizerPlugin::~VisualizerPlugin()
+EphysMetadataGenerator::~EphysMetadataGenerator()
 {
 }
 
-AudioProcessorEditor* VisualizerPlugin::createEditor()
+AudioProcessorEditor* EphysMetadataGenerator::createEditor()
 {
-    editor = std::make_unique<VisualizerPluginEditor> (this);
+    editor = std::make_unique<EphysMetadataGeneratorEditor> (this);
     return editor.get();
 }
 
-void VisualizerPlugin::registerParameters()
+void EphysMetadataGenerator::registerParameters()
 {
     // Register any parameters here if needed
     // For example: addSelectedChannelsParameter (Parameter::STREAM_SCOPE,
@@ -49,31 +49,31 @@ void VisualizerPlugin::registerParameters()
     //                                 Selected channels to use);
 }
 
-void VisualizerPlugin::updateSettings()
+void EphysMetadataGenerator::updateSettings()
 {
 }
 
-void VisualizerPlugin::process (AudioBuffer<float>& buffer)
+void EphysMetadataGenerator::process (AudioBuffer<float>& buffer)
 {
     checkForEvents (true);
 }
 
-void VisualizerPlugin::handleTTLEvent (TTLEventPtr event)
+void EphysMetadataGenerator::handleTTLEvent (TTLEventPtr event)
 {
 }
 
-void VisualizerPlugin::handleSpike (SpikePtr spike)
+void EphysMetadataGenerator::handleSpike (SpikePtr spike)
 {
 }
 
-void VisualizerPlugin::handleBroadcastMessage (const String& message, const int64 systemTimeMillis)
+void EphysMetadataGenerator::handleBroadcastMessage (const String& message, const int64 systemTimeMillis)
 {
 }
 
-void VisualizerPlugin::saveCustomParametersToXml (XmlElement* parentElement)
+void EphysMetadataGenerator::saveCustomParametersToXml (XmlElement* parentElement)
 {
 }
 
-void VisualizerPlugin::loadCustomParametersFromXml (XmlElement* parentElement)
+void EphysMetadataGenerator::loadCustomParametersFromXml (XmlElement* parentElement)
 {
 }

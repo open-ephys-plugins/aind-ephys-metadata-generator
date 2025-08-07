@@ -21,24 +21,50 @@
 
 */
 
-#include "VisualizerPluginEditor.h"
+#include "EphysMetadataGeneratorCanvas.h"
 
-#include "VisualizerPlugin.h"
-#include "VisualizerPluginCanvas.h"
+#include "EphysMetadataGenerator.h"
 
-VisualizerPluginEditor::VisualizerPluginEditor (GenericProcessor* p)
-    : VisualizerEditor (p, "Visualizer", 240)
+
+EphysMetadataGeneratorCanvas::EphysMetadataGeneratorCanvas(EphysMetadataGenerator* processor_)
+	: processor(processor_)
 {
-    // Add parameter editors here. Note the parameters
-    // must be created in the processor's registerParameters() method.
-    // For example:
-    // addSelectedChannelsParameterEditor(Parameter::STREAM_SCOPE,
-    //                                    "channels",
-    //                                    15, 40);
+
 }
 
-Visualizer* VisualizerPluginEditor::createNewCanvas()
+
+EphysMetadataGeneratorCanvas::~EphysMetadataGeneratorCanvas()
 {
-    return new VisualizerPluginCanvas ((VisualizerPlugin*) getProcessor());
-    ;
+
+}
+
+
+void EphysMetadataGeneratorCanvas::resized()
+{
+
+}
+
+void EphysMetadataGeneratorCanvas::updateSettings()
+{
+    
+    
+}
+
+void EphysMetadataGeneratorCanvas::refreshState()
+{
+
+}
+
+
+void EphysMetadataGeneratorCanvas::refresh()
+{
+
+}
+
+
+void EphysMetadataGeneratorCanvas::paint(Graphics& g)
+{
+
+    g.fillAll(getLookAndFeel().findColour (ThemeColours::windowBackground));
+
 }
