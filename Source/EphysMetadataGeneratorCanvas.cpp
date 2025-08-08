@@ -661,7 +661,7 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
             // Create common brain region suggestions
             CCFRegionList regionList;
             
-            autoCompleteEditor = new AutoCompleteTextEditor(regionList.getRegionNames());
+            autoCompleteEditor = new AutoCompleteTextEditor(regionList.getRegionAcronyms());
             autoCompleteEditor->setName("TargetStructure_" + String(rowNumber));
             
             // Add listener to update data when text changes
@@ -670,7 +670,7 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
                 if (rowNumber < probeData.size())
                 {
                     probeData.getReference(rowNumber).targetStructure = autoCompleteEditor->getText();
-                    LOGD("Target structure for row ", rowNumber, " changed to: ", autoCompleteEditor->getText());
+                    //LOGD("Target structure for row ", rowNumber, " changed to: ", autoCompleteEditor->getText());
                 }
             };
         }
