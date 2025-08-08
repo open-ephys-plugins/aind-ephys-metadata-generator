@@ -157,6 +157,62 @@ struct Acquisition
     
     /** Data streams*/
     OwnedArray<DataStream> dataStreams;
+    
+    /**
+     * Write all acquisition data to a JSON file
+     * @param filePath Path where the JSON file should be written
+     * @return true if successful, false otherwise
+     */
+    bool writeToJSON(const String& filePath) const;
+    
+private:
+    /**
+     * Convert the entire acquisition to a JSON object
+     * @return var object containing all acquisition data
+     */
+    var toJSON() const;
+    
+    /**
+     * Convert a Probe struct to JSON
+     * @param probe The probe to convert
+     * @return var object containing probe data
+     */
+    static var probeToJSON(const Probe& probe);
+    
+    /**
+     * Convert a MISModule struct to JSON
+     * @param module The MIS module to convert
+     * @return var object containing module data
+     */
+    static var misModuleToJSON(const MISModule& module);
+    
+    /**
+     * Convert a Manipulator struct to JSON
+     * @param manipulator The manipulator to convert
+     * @return var object containing manipulator data
+     */
+    static var manipulatorToJSON(const Manipulator& manipulator);
+    
+    /**
+     * Convert an EphysAssembly struct to JSON
+     * @param assembly The assembly to convert
+     * @return var object containing assembly data
+     */
+    static var ephysAssemblyToJSON(const EphysAssembly& assembly);
+    
+    /**
+     * Convert a DataStream struct to JSON
+     * @param stream The data stream to convert
+     * @return var object containing stream data
+     */
+    static var dataStreamToJSON(const DataStream& stream);
+    
+    /**
+     * Convert CoordinateSystem enum to string
+     * @param system The coordinate system enum value
+     * @return String representation of the coordinate system
+     */
+    static String coordinateSystemToString(CoordinateSystem system);
 };
 
 };

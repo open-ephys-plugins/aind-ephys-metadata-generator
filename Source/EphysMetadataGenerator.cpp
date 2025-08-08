@@ -36,10 +36,3 @@ void EphysMetadataGenerator::updateSettings()
 {
 }
 
-void EphysMetadataGenerator::saveCustomParametersToXml (XmlElement* parentElement)
-{
-}
-
-void EphysMetadataGenerator::loadCustomParametersFromXml (XmlElement* parentElement)
-{
-}

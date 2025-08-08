@@ -80,17 +80,23 @@ void EphysMetadataGeneratorCanvas::resized()
     const int buttonHeight = 30;
     const int margin = 10;
     
-    if (addRowButton != nullptr)
+    if (metadataTable != nullptr && addRowButton != nullptr)
     {
-        // Position the Add Row button at the top-right corner
-        addRowButton->setBounds(getWidth() - 120, margin, 100, buttonHeight);
+        // Calculate available space for table (leave room for button at bottom)
+        int tableHeight = getHeight() - (buttonHeight + 2 * margin + margin); // Extra margin for spacing
+        
+        // Position the table at the top
+        metadataTable->setBounds(margin, margin, getWidth() - 2 * margin, tableHeight);
+        
+        // Position the Add Row button at the bottom, centered
+        int buttonY = margin + tableHeight + margin;
+        int buttonX = (getWidth() - 100) / 2; // Center the button horizontally
+        addRowButton->setBounds(buttonX, buttonY, 100, buttonHeight);
     }
-    
-    if (metadataTable != nullptr)
+    else if (metadataTable != nullptr)
     {
-        // Position the table below the button with some spacing
-        int tableY = margin + buttonHeight + margin;
-        metadataTable->setBounds(margin, tableY, getWidth() - 2 * margin, getHeight() - tableY - margin);
+        // If no button, use full height for table
+        metadataTable->setBounds(margin, margin, getWidth() - 2 * margin, getHeight() - 2 * margin);
     }
 }
 
