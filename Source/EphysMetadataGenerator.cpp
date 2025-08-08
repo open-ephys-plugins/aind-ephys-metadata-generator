@@ -25,6 +25,8 @@
 
 #include "EphysMetadataGeneratorEditor.h"
 
+#include "Acquisition.h"
+
 
 AudioProcessorEditor* EphysMetadataGenerator::createEditor()
 {
@@ -34,5 +36,29 @@ AudioProcessorEditor* EphysMetadataGenerator::createEditor()
 
 void EphysMetadataGenerator::updateSettings()
 {
+    // Needs to count the number of probes and use this to
+    // update the table model in the canvas
 }
 
+void EphysMetadataGenerator::stopRecording()
+{
+    
+    // This function is called when recording stops
+    
+    File parentDirectory = CoreServices::getRecordingParentDirectory().getChildFile(CoreServices::getRecordingDirectoryName());
+    
+    File recordingDirectory = parentDirectory.getChildFile (getName() + " " + String(getNodeId()));
+    
+    if (!recordingDirectory.exists())
+    {
+        recordingDirectory.createDirectory();
+    }
+    
+    // Save the metadata file in the recording directory
+    File metadataFile = recordingDirectory.getChildFile ("ephys_stream.json");
+    
+    // Create the metadata object and save it
+    Metadata::Acquisition acquisition;
+    acquisition.writeToJSON(metadataFile);
+    
+}

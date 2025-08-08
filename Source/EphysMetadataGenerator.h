@@ -56,6 +56,9 @@ public:
         The process method is called every time a new data buffer is available.
         Visualizer plugins typically use this method to send data to the canvas for display purposes */
     void process (AudioBuffer<float>& buffer) override { }
+    
+    /** Called when recording starts */
+    void stopRecording() override;
 
 private:
     

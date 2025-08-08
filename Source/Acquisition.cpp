@@ -26,30 +26,16 @@
 namespace Metadata
 {
 
-bool Acquisition::writeToJSON(const String& filePath) const
+bool Acquisition::writeToJSON(File file) const
 {
     try
     {
-        var jsonData = toJSON();
-        String jsonString = JSON::toString(jsonData, true);
+        JSON::FormatOptions options;
+        FileOutputStream outputStream(file);
         
-        File outputFile(filePath);
-        
-        // Create parent directories if they don't exist
-        if (!outputFile.getParentDirectory().createDirectory())
-        {
-            return false;
-        }
-        
-        // Write to file
-        FileOutputStream outputStream(outputFile);
-        if (!outputStream.openedOk())
-        {
-            return false;
-        }
-        
-        outputStream.writeText(jsonString, false, false, nullptr);
-        outputStream.flush();
+        JSON::writeToStream(outputStream,
+                            toJSON(),
+                            options.withIndentLevel(4));
         
         return true;
     }

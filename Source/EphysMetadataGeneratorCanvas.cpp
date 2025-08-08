@@ -45,6 +45,27 @@ EphysMetadataGeneratorCanvas::EphysMetadataGeneratorCanvas(EphysMetadataGenerato
     addRowButton->setColour(TextButton::textColourOnId, Colours::black);
     addAndMakeVisible(addRowButton.get());
     
+    // Create and configure the server address components
+    serverAddressLabel = std::make_unique<Label>("Server Address Label", "HTTP Server:");
+    serverAddressLabel->setJustificationType(Justification::centredLeft);
+    serverAddressLabel->setColour(Label::textColourId, findColour(ThemeColours::defaultText));
+    addAndMakeVisible(serverAddressLabel.get());
+    
+    serverAddressEditor = std::make_unique<TextEditor>("Server Address");
+    serverAddressEditor->setText("localhost:8080", false);
+    serverAddressEditor->setJustification(Justification::centred);
+    serverAddressEditor->setColour(TextEditor::backgroundColourId, Colours::white);
+    serverAddressEditor->setColour(TextEditor::textColourId, Colours::black);
+    serverAddressEditor->setColour(TextEditor::outlineColourId, Colours::grey);
+    addAndMakeVisible(serverAddressEditor.get());
+    
+    connectButton = std::make_unique<TextButton>("Connect");
+    connectButton->setName("ConnectButton");
+    connectButton->addListener(this);
+    connectButton->setColour(TextButton::buttonColourId, Colours::lightblue);
+    connectButton->setColour(TextButton::textColourOnId, Colours::black);
+    addAndMakeVisible(connectButton.get());
+    
     // Add columns to the table
     metadataTable->getHeader().addColumn("Probe", 1, 80);
     metadataTable->getHeader().addColumn("Manipulator", 2, 100);
@@ -79,24 +100,63 @@ void EphysMetadataGeneratorCanvas::resized()
 {
     const int buttonHeight = 30;
     const int margin = 10;
+    const int bottomControlsHeight = 40; // Height for bottom controls (Add Row + Server)
     
     if (metadataTable != nullptr && addRowButton != nullptr)
     {
-        // Calculate available space for table (leave room for button at bottom)
-        int tableHeight = getHeight() - (buttonHeight + 2 * margin + margin); // Extra margin for spacing
+        // Calculate available space for table (leave room for bottom controls)
+        int tableHeight = getHeight() - (bottomControlsHeight + 2 * margin + margin); // Extra margin for spacing
         
         // Position the table at the top
         metadataTable->setBounds(margin, margin, getWidth() - 2 * margin, tableHeight);
         
-        // Position the Add Row button at the bottom, centered
-        int buttonY = margin + tableHeight + margin;
-        int buttonX = (getWidth() - 100) / 2; // Center the button horizontally
-        addRowButton->setBounds(buttonX, buttonY, 100, buttonHeight);
+        // Position controls at the bottom
+        int bottomY = margin + tableHeight + margin;
+        
+        // Server address controls dimensions
+        int labelWidth = 80;
+        int editorWidth = 120;
+        int connectButtonWidth = 70;
+        int addButtonWidth = 80;
+        
+        // Calculate total width needed for all bottom controls
+        int totalBottomControlsWidth = labelWidth + editorWidth + connectButtonWidth + addButtonWidth + 4 * margin;
+        
+        // Center all bottom controls horizontally
+        int startX = (getWidth() - totalBottomControlsWidth) / 2;
+        
+        // Position server address controls on the left side of bottom area
+        if (serverAddressLabel != nullptr && serverAddressEditor != nullptr && connectButton != nullptr)
+        {
+            serverAddressLabel->setBounds(startX, bottomY, labelWidth, buttonHeight);
+            serverAddressEditor->setBounds(startX + labelWidth + margin, bottomY, editorWidth, buttonHeight);
+            connectButton->setBounds(startX + labelWidth + editorWidth + 2 * margin, bottomY, connectButtonWidth, buttonHeight);
+        }
+        
+        // Position the Add Row button on the right side of bottom area
+        int addButtonX = startX + labelWidth + editorWidth + connectButtonWidth + 3 * margin;
+        addRowButton->setBounds(addButtonX, bottomY, addButtonWidth, buttonHeight);
     }
     else if (metadataTable != nullptr)
     {
-        // If no button, use full height for table
-        metadataTable->setBounds(margin, margin, getWidth() - 2 * margin, getHeight() - 2 * margin);
+        // If no add button, use most of height for table, but leave room for server controls
+        int tableHeight = getHeight() - (bottomControlsHeight + 2 * margin);
+        metadataTable->setBounds(margin, margin, getWidth() - 2 * margin, tableHeight);
+        
+        // Position server controls at bottom center
+        if (serverAddressLabel != nullptr && serverAddressEditor != nullptr && connectButton != nullptr)
+        {
+            int labelWidth = 80;
+            int editorWidth = 150;
+            int connectButtonWidth = 80;
+            int totalServerControlsWidth = labelWidth + editorWidth + connectButtonWidth + 2 * margin;
+            int serverX = (getWidth() - totalServerControlsWidth) / 2;
+            int bottomY = margin + tableHeight + margin;
+            
+            serverAddressLabel->setBounds(serverX, bottomY, labelWidth, buttonHeight);
+            serverAddressEditor->setBounds(serverX + labelWidth + margin, bottomY, editorWidth, buttonHeight);
+            connectButton->setBounds(serverX + labelWidth + editorWidth + 2 * margin, bottomY, connectButtonWidth, buttonHeight);
+        }
     }
 }
 
@@ -542,6 +602,13 @@ void EphysMetadataGeneratorCanvas::buttonClicked(Button* buttonThatWasClicked)
 {
     String buttonName = buttonThatWasClicked->getName();
     
+    // Check if it's the Connect button
+    if (buttonName == "ConnectButton")
+    {
+        updateStageListenerEndpoint();
+        return; // Early return to avoid checking other button types
+    }
+    
     // Check if it's the Add Row button
     if (buttonName == "AddRowButton")
     {
@@ -791,6 +858,12 @@ void EphysMetadataGeneratorCanvas::saveCustomParametersToXml(XmlElement* xml)
         probeElement->setAttribute("notes", probe.notes);
     }
     
+    // Save server address setting
+    if (serverAddressEditor != nullptr)
+    {
+        xml->setAttribute("serverAddress", serverAddressEditor->getText());
+    }
+    
     LOGD("Saved ", probeData.size(), " probe metadata entries to XML");
 }
 
@@ -838,11 +911,109 @@ void EphysMetadataGeneratorCanvas::loadCustomParametersFromXml(XmlElement* xml)
         return; // Exit early since initializeTable() already updates the table
     }
     
+    // Load server address setting
+    if (serverAddressEditor != nullptr)
+    {
+        String savedServerAddress = xml->getStringAttribute("serverAddress", "localhost:8080");
+        serverAddressEditor->setText(savedServerAddress, false);
+        LOGD("Loaded server address: ", savedServerAddress);
+    }
+    
     // Update the table to reflect the loaded data
     if (metadataTable != nullptr)
     {
         metadataTable->updateContent();
         metadataTable->repaint();
+    }
+}
+
+void EphysMetadataGeneratorCanvas::updateStageListenerEndpoint()
+{
+    if (serverAddressEditor == nullptr || stageListener == nullptr)
+        return;
+    
+    String serverAddress = serverAddressEditor->getText().trim();
+    
+    // Basic validation of the server address
+    if (serverAddress.isEmpty())
+    {
+        LOGE("Server address cannot be empty");
+        return;
+    }
+    
+    // Parse the server address to extract IP/hostname and port
+    String host = "localhost";
+    int port = 8080;
+    
+    if (serverAddress.contains(":"))
+    {
+        StringArray parts = StringArray::fromTokens(serverAddress, ":", "");
+        if (parts.size() == 2)
+        {
+            host = parts[0].trim();
+            port = parts[1].trim().getIntValue();
+            
+            // Basic validation
+            if (host.isEmpty() || port <= 0 || port > 65535)
+            {
+                LOGE("Invalid server address format. Expected format: hostname:port (e.g., localhost:8080)");
+                return;
+            }
+        }
+        else
+        {
+            LOGE("Invalid server address format. Expected format: hostname:port (e.g., localhost:8080)");
+            return;
+        }
+    }
+    else
+    {
+        // If no port specified, assume it's just a hostname/IP, keep default port
+        host = serverAddress;
+    }
+    
+    // Construct the full endpoint URL
+    String newEndpoint = "http://" + host + ":" + String(port) + "/stage/positions";
+    
+    // Stop the current listener if it's running
+    bool wasListening = stageListener->isListening();
+    if (wasListening)
+    {
+        stageListener->stopListening();
+        LOGD("Stopped stage listener for endpoint update");
+    }
+    
+    // Update the endpoint
+    stageListener->setEndpoint(newEndpoint);
+    LOGD("Updated stage listener endpoint to: ", newEndpoint);
+    
+    // Restart the listener if it was previously running
+    if (wasListening)
+    {
+        //stageListener->startListening();
+        LOGD("Restarted stage listener with new endpoint");
+        
+        // Update the connect button to show it's connected
+        if (connectButton != nullptr)
+        {
+            connectButton->setButtonText("Connected");
+            connectButton->setColour(TextButton::buttonColourId, Colours::green);
+            connectButton->setColour(TextButton::textColourOnId, Colours::white);
+        }
+    }
+    else
+    {
+        // Start listening with the new endpoint
+        //stageListener->startListening();
+        LOGD("Started stage listener with new endpoint: ", newEndpoint);
+        
+        // Update the connect button to show it's connected
+        if (connectButton != nullptr)
+        {
+            connectButton->setButtonText("Connected");
+            connectButton->setColour(TextButton::buttonColourId, Colours::green);
+            connectButton->setColour(TextButton::textColourOnId, Colours::white);
+        }
     }
 }
 

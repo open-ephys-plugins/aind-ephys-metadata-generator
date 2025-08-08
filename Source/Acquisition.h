@@ -163,7 +163,7 @@ struct Acquisition
      * @param filePath Path where the JSON file should be written
      * @return true if successful, false otherwise
      */
-    bool writeToJSON(const String& filePath) const;
+    bool writeToJSON(File file) const;
     
 private:
     /**

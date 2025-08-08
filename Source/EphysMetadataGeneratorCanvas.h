@@ -130,6 +130,14 @@ private:
     
     /** Button to add new rows to the table */
     std::unique_ptr<TextButton> addRowButton;
+    
+    /** Components for setting HTTP server address */
+    std::unique_ptr<Label> serverAddressLabel;
+    std::unique_ptr<TextEditor> serverAddressEditor;
+    std::unique_ptr<TextButton> connectButton;
+    
+    /** Update the stage listener endpoint based on current IP and port settings */
+    void updateStageListenerEndpoint();
 
     /** Generates an assertion if this class leaks */
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (EphysMetadataGeneratorCanvas);
