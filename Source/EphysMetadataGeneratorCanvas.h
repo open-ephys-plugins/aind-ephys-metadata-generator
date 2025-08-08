@@ -57,10 +57,10 @@ public:
     void updateSettings() override;
 
     /** Called when the visualizer's tab becomes visible again */
-    void refreshState() override;
+    void refreshState() override { }
 
     /** Called instead of "repaint()" to avoid re-painting sub-components*/
-    void refresh() override;
+    void refresh() override { }
 
     /** Draws the canvas background */
     void paint (Graphics& g) override;
@@ -127,6 +127,9 @@ private:
     
     /** Stage listener for fetching X, Y, Z coordinates */
     std::unique_ptr<StageListener> stageListener;
+    
+    /** Button to add new rows to the table */
+    std::unique_ptr<TextButton> addRowButton;
 
     /** Generates an assertion if this class leaks */
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (EphysMetadataGeneratorCanvas);

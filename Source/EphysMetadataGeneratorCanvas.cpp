@@ -37,6 +37,14 @@ EphysMetadataGeneratorCanvas::EphysMetadataGeneratorCanvas(EphysMetadataGenerato
     metadataTable->setOutlineThickness(1);
     addAndMakeVisible(metadataTable.get());
     
+    // Create and configure the Add Row button
+    addRowButton = std::make_unique<TextButton>("Add Row");
+    addRowButton->setName("AddRowButton");
+    addRowButton->addListener(this);
+    addRowButton->setColour(TextButton::buttonColourId, Colours::lightgreen);
+    addRowButton->setColour(TextButton::textColourOnId, Colours::black);
+    addAndMakeVisible(addRowButton.get());
+    
     // Add columns to the table
     metadataTable->getHeader().addColumn("Probe", 1, 80);
     metadataTable->getHeader().addColumn("Manipulator", 2, 100);
@@ -50,7 +58,9 @@ EphysMetadataGeneratorCanvas::EphysMetadataGeneratorCanvas(EphysMetadataGenerato
     metadataTable->getHeader().addColumn("Target Structure", 10, 220);
     metadataTable->getHeader().addColumn("Dye", 11, 80);
     metadataTable->getHeader().addColumn("Notes", 12, 150);
+    metadataTable->getHeader().addColumn("Delete", 13, 60);
     
+    // Create some initial values
     initializeTable();
     
     // Create and start the stage listener
@@ -67,9 +77,20 @@ EphysMetadataGeneratorCanvas::~EphysMetadataGeneratorCanvas()
 
 void EphysMetadataGeneratorCanvas::resized()
 {
+    const int buttonHeight = 30;
+    const int margin = 10;
+    
+    if (addRowButton != nullptr)
+    {
+        // Position the Add Row button at the top-right corner
+        addRowButton->setBounds(getWidth() - 120, margin, 100, buttonHeight);
+    }
+    
     if (metadataTable != nullptr)
     {
-        metadataTable->setBounds(10, 10, getWidth() - 20, getHeight() - 20);
+        // Position the table below the button with some spacing
+        int tableY = margin + buttonHeight + margin;
+        metadataTable->setBounds(margin, tableY, getWidth() - 2 * margin, getHeight() - tableY - margin);
     }
 }
 
@@ -77,17 +98,6 @@ void EphysMetadataGeneratorCanvas::updateSettings()
 {
     
     
-}
-
-void EphysMetadataGeneratorCanvas::refreshState()
-{
-
-}
-
-
-void EphysMetadataGeneratorCanvas::refresh()
-{
-
 }
 
 
@@ -117,8 +127,8 @@ void EphysMetadataGeneratorCanvas::paintCell(Graphics& g, int rowNumber, int col
     
     if (rowNumber < probeData.size())
     {
-        // Do not draw text for Surface, Dye column and Notes column, handled by buttons
-        if (columnId == 9 || columnId == 10 || columnId == 11 || columnId == 12)
+        // Do not draw text for Surface, Dye, Notes, and Delete columns, handled by buttons
+        if (columnId == 9 || columnId == 10 || columnId == 11 || columnId == 12 || columnId == 13)
             return;
         String text;
         const ProbeMetadata& row = probeData[rowNumber];
@@ -462,6 +472,29 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
         return button;
     }
     
+    // Button for the Delete column (column 13)
+    if (columnId == 13)
+    {
+        TextButton* button = dynamic_cast<TextButton*>(existingComponentToUpdate);
+        
+        if (button == nullptr)
+        {
+            button = new TextButton();
+            button->setName("DeleteButton_" + String(rowNumber));
+            button->addListener(this);
+        }
+        
+        // Set the button appearance for delete action
+        button->setButtonText("X");
+        button->setColour(TextButton::buttonColourId, Colours::darkred);
+        button->setColour(TextButton::textColourOnId, Colours::white);
+        
+        // Make the button slightly smaller and centered
+        button->setSize(40, 20);
+        
+        return button;
+    }
+    
     return nullptr;
 }
 
@@ -502,6 +535,36 @@ void EphysMetadataGeneratorCanvas::labelTextChanged(Label* labelThatHasChanged)
 void EphysMetadataGeneratorCanvas::buttonClicked(Button* buttonThatWasClicked)
 {
     String buttonName = buttonThatWasClicked->getName();
+    
+    // Check if it's the Add Row button
+    if (buttonName == "AddRowButton")
+    {
+        // Create a new probe metadata entry with default values
+        ProbeMetadata newProbe;
+        newProbe.probe = "Probe " + String(char('A' + probeData.size())); // Generate next letter
+        newProbe.manipulator = "62219"; // Default manipulator
+        newProbe.arcAngle = "0";
+        newProbe.moduleAngle = "0";
+        newProbe.rotation = "0";
+        newProbe.x = "0.0";
+        newProbe.y = "0.0";
+        newProbe.z = "0.0";
+        newProbe.surface = "0.0";
+        newProbe.targetStructure = "";
+        newProbe.dye = "CM-DiI"; // Default dye
+        newProbe.notes = "";
+        
+        // Add the new probe to the data array
+        probeData.add(newProbe);
+        
+        // Update the table to show the new row
+        metadataTable->updateContent();
+        metadataTable->repaint();
+        
+        LOGD("Added new probe row: ", newProbe.probe, " (total rows: ", probeData.size(), ")");
+        
+        return; // Early return to avoid checking other button types
+    }
     
     // Check if it's a surface button
     if (buttonName.startsWith("SurfaceButton_"))
@@ -590,6 +653,44 @@ void EphysMetadataGeneratorCanvas::buttonClicked(Button* buttonThatWasClicked)
             
             // Force a repaint of the button to show the color change
             dyeButton->repaint();
+        }
+    }
+    // Check if it's a delete button
+    else if (buttonName.startsWith("DeleteButton_"))
+    {
+        // Extract the row number from the button name
+        String rowString = buttonName.substring(13); // Remove "DeleteButton_" prefix
+        int rowNumber = rowString.getIntValue();
+        
+        if (rowNumber < probeData.size())
+        {
+            // Show confirmation dialog before deleting
+            String probeIdentifier = probeData[rowNumber].probe;
+            
+            // Create a confirmation dialog
+            bool shouldDelete = AlertWindow::showOkCancelBox(
+                AlertWindow::QuestionIcon,
+                "Delete Probe Row",
+                "Are you sure you want to delete \"" + probeIdentifier + "\"?\n\nThis action cannot be undone.",
+                "Delete",
+                "Cancel"
+            );
+            
+            if (shouldDelete)
+            {
+                // Remove the probe from the data array
+                probeData.remove(rowNumber);
+                
+                // Update the table to reflect the deletion
+                metadataTable->updateContent();
+                metadataTable->repaint();
+                
+                LOGD("Deleted probe row: ", probeIdentifier, " (remaining rows: ", probeData.size(), ")");
+            }
+            else
+            {
+                LOGD("Delete cancelled for probe: ", probeIdentifier);
+            }
         }
     }
     // Check if it's a notes button
