@@ -21,7 +21,6 @@
 
 */
 
-//This prevents include loops. We recommend changing the macro to a name suitable for your plugin
 #ifndef ACQUISITION_H_DEFINED
 #define ACQUISITION_H_DEFINED
 
@@ -44,22 +43,9 @@ enum CoordinateSystem
     MPM_MANIP_RFB = 1
 };
 
-enum Dye
-{
-    CM_DII = 0,
-    CM_DID = 1,
-    DS_DID = 2
-};
 
-class Probe
+struct Probe
 {
-public:
-    /** Constructor */
-    Probe() { }
-    
-    /** Destructor */
-    ~Probe() {}
-    
     /** Probe name */
     String name;
     
@@ -73,22 +59,15 @@ public:
     double finalZ = 0.0;
     
     /** Dye */
-    Dye dye;
+    String dye;
     
     /** Notes */
     String notes;
     
 };
 
-class MISModule
+struct MISModule
 {
-public:
-    /** Constructor */
-    MISModule() { }
-    
-    /** Destructor */
-    ~MISModule() {}
-    
     /** Arc angle*/
     double arcAngle = 0.0;
     
@@ -100,15 +79,8 @@ public:
     
 };
 
-class Manipulator
+struct Manipulator
 {
-public:
-    /** Constructor */
-    Manipulator() { }
-
-    /** Destructor */
-    ~Manipulator() {}
-    
     /** Name */
     String name;
     
@@ -127,15 +99,8 @@ public:
 
 };
 
-class EphysAssembly
+struct EphysAssembly
 {
-public:
-    /** Constructor */
-    EphysAssembly() { }
-
-    /** Destructor */
-    ~EphysAssembly() {}
-
     /** Assembly name */
     String name;
 
@@ -150,15 +115,8 @@ public:
 
 };
 
-class DataStream
+struct DataStream
 {
-public:
-    /** Constructor */
-    DataStream() { }
-
-    /** Destructor */
-    ~DataStream() {}
-
     /** Start time **/
     Time startTime;
     
@@ -174,15 +132,8 @@ public:
 };
 
 
-class Acquisition
+struct Acquisition
 {
-public:
-    /** Constructor */
-    Acquisition () { }
-    
-    /** Destructor */
-    ~Acquisition() {}
-    
     /** Subject ID*/
     String subjectID;
     
@@ -206,11 +157,6 @@ public:
     
     /** Data streams*/
     OwnedArray<DataStream> dataStreams;
-    
-    
-private:
-    /** Generates an assertion if this class leaks */
-    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Acquisition);
 };
 
 };

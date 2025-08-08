@@ -27,6 +27,7 @@
 #include <VisualizerWindowHeaders.h>
 #include "TableComponents.h"
 #include "StageListener.h"
+#include "Acquisition.h"
 
 class EphysMetadataGenerator;
 
@@ -63,6 +64,12 @@ public:
 
     /** Draws the canvas background */
     void paint (Graphics& g) override;
+    
+    /** Saves custom visualizer parameters to XMLobject */
+    void saveCustomParametersToXml (XmlElement* xml) override;
+
+    /** Loads custom visualizer parameters from XML object */
+    void loadCustomParametersFromXml (XmlElement* xml) override;
 
     /** TableListBoxModel methods */
     int getNumRows() override;
