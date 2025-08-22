@@ -58,6 +58,9 @@ public:
     void process (AudioBuffer<float>& buffer) override { }
     
     /** Called when recording starts */
+    void startRecording() override;
+
+    /** Called when recording starts */
     void stopRecording() override;
 
 private:

@@ -36,3 +36,15 @@ Visualizer* EphysMetadataGeneratorEditor::createNewCanvas()
     return new EphysMetadataGeneratorCanvas ((EphysMetadataGenerator*) getProcessor());
     ;
 }
+
+Metadata::Acquisition EphysMetadataGeneratorEditor::getLatestMetadata()
+{
+    if (canvas != nullptr)
+    {
+        // Ensure the canvas is of the correct type
+        auto ephysMetadataGeneratorCanvas = (EphysMetadataGeneratorCanvas*) canvas.get();
+        return ephysMetadataGeneratorCanvas->getLatestMetadata();
+    }
+
+    return Metadata::Acquisition(); // Return an empty acquisition if no canvas is available
+}

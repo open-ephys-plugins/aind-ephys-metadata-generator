@@ -27,6 +27,8 @@
 
 #include <VisualizerEditorHeaders.h>
 
+#include "Acquisition.h"
+
 /** 
 	The editor for the EphysMetadataGenerator
 
@@ -44,6 +46,9 @@ public:
 
     /** Creates the canvas */
     Visualizer* createNewCanvas();
+
+	/** Reads metadata from the canvas */
+    Metadata::Acquisition getLatestMetadata();
 
 private:
     /** Generates an assertion if this class leaks */

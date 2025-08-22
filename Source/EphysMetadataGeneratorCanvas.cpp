@@ -52,7 +52,7 @@ EphysMetadataGeneratorCanvas::EphysMetadataGeneratorCanvas(EphysMetadataGenerato
     addAndMakeVisible(serverAddressLabel.get());
     
     serverAddressEditor = std::make_unique<TextEditor>("Server Address");
-    serverAddressEditor->setText("localhost:8080", false);
+    serverAddressEditor->setText("10.128.49.150:8080", false);
     serverAddressEditor->setJustification(Justification::centred);
     serverAddressEditor->setColour(TextEditor::backgroundColourId, Colours::white);
     serverAddressEditor->setColour(TextEditor::textColourId, Colours::black);
@@ -86,7 +86,7 @@ EphysMetadataGeneratorCanvas::EphysMetadataGeneratorCanvas(EphysMetadataGenerato
     
     // Create and start the stage listener
     stageListener = std::make_unique<StageListener>(this);
-    //stageListener->startListening();
+    stageListener->startListening();
 }
 
 
@@ -115,9 +115,9 @@ void EphysMetadataGeneratorCanvas::resized()
         
         // Server address controls dimensions
         int labelWidth = 80;
-        int editorWidth = 120;
-        int connectButtonWidth = 70;
-        int addButtonWidth = 80;
+        int editorWidth = 200;
+        int connectButtonWidth = 200;
+        int addButtonWidth = 200;
         
         // Calculate total width needed for all bottom controls
         int totalBottomControlsWidth = labelWidth + editorWidth + connectButtonWidth + addButtonWidth + 4 * margin;
@@ -160,6 +160,37 @@ void EphysMetadataGeneratorCanvas::resized()
     }
 }
 
+void EphysMetadataGeneratorCanvas::lookAndFeelChanged()
+{
+    // Call the base class implementation first
+    Visualizer::lookAndFeelChanged();
+    
+    // Update colors for components that use theme colors
+    if (serverAddressLabel != nullptr)
+    {
+        serverAddressLabel->setColour(Label::textColourId, findColour(ThemeColours::defaultText));
+    }
+    
+    if (serverAddressEditor != nullptr)
+    {
+        serverAddressEditor->setColour(TextEditor::backgroundColourId, Colours::white);
+        serverAddressEditor->setColour(TextEditor::textColourId, Colours::black);
+        serverAddressEditor->setColour(TextEditor::outlineColourId, Colours::grey);
+    }
+    
+    // Force table to update its components by refreshing the content
+    // This will cause refreshComponentForCell to be called for all cells,
+    // which will update colors for labels and other components
+    if (metadataTable != nullptr)
+    {
+        metadataTable->updateContent();
+        metadataTable->repaint();
+    }
+    
+    // Repaint the entire canvas to ensure all colors are updated
+    repaint();
+}
+
 void EphysMetadataGeneratorCanvas::updateSettings()
 {
     
@@ -175,7 +206,7 @@ void EphysMetadataGeneratorCanvas::paint(Graphics& g)
 // TableListBoxModel methods
 int EphysMetadataGeneratorCanvas::getNumRows()
 {
-    return probeData.size();
+    return probeMetadata.size();
 }
 
 void EphysMetadataGeneratorCanvas::paintRowBackground(Graphics& g, int rowNumber, int width, int height, bool rowIsSelected)
@@ -191,13 +222,13 @@ void EphysMetadataGeneratorCanvas::paintCell(Graphics& g, int rowNumber, int col
     g.setColour(getLookAndFeel().findColour(Label::textColourId));
     g.setFont(14.0f);
     
-    if (rowNumber < probeData.size())
+    if (rowNumber < probeMetadata.size())
     {
         // Do not draw text for Surface, Dye, Notes, and Delete columns, handled by buttons
         if (columnId == 9 || columnId == 10 || columnId == 11 || columnId == 12 || columnId == 13)
             return;
         String text;
-        const ProbeMetadata& row = probeData[rowNumber];
+        const ProbeMetadata& row = probeMetadata[rowNumber];
         switch (columnId)
         {
             case 1: text = row.probe; break;
@@ -261,9 +292,9 @@ void EphysMetadataGeneratorCanvas::initializeTable()
     sample3.dye = "CM-DiI";
     sample3.notes = "";
     
-    probeData.add(sample1);
-    probeData.add(sample2);
-    probeData.add(sample3);
+    probeMetadata.add(sample1);
+    probeMetadata.add(sample2);
+    probeMetadata.add(sample3);
     
     metadataTable->updateContent();
 }
@@ -278,21 +309,64 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
         if (comboBox == nullptr)
         {
             comboBox = new ComboBox();
-            comboBox->addItem("62219", 1);
-            comboBox->addItem("62220", 2);
-            comboBox->addItem("62221", 3);
-            comboBox->setName("Manipulator");
+            comboBox->setName("Manipulator_" + String(rowNumber));
             comboBox->addListener(this);
         }
         
-        // Set the current selection based on the data
-        if (rowNumber < probeData.size())
+        // Clear existing items and repopulate with available serial numbers
+        comboBox->clear();
+        
+        // Add an empty/null option first
+        comboBox->addItem("<Select Manipulator>", 1);
+        
+        // Add available serial numbers from the stage server
+        for (int i = 0; i < availableSerialNumbers.size(); ++i)
         {
-            String currentValue = probeData[rowNumber].manipulator;
-            if (currentValue == "62219") comboBox->setSelectedId(1);
-            else if (currentValue == "62220") comboBox->setSelectedId(2);
-            else if (currentValue == "62221") comboBox->setSelectedId(3);
-            else comboBox->setSelectedId(1); // Default to first option
+            comboBox->addItem(availableSerialNumbers[i], i + 2); // Start from ID 2
+        }
+        
+        // If no serial numbers are available, add fallback options
+        if (availableSerialNumbers.isEmpty())
+        {
+            comboBox->addItem("SN00000", 2);
+        }
+        
+        // Set the current selection based on the data
+        if (rowNumber < probeMetadata.size())
+        {
+            String currentValue = probeMetadata[rowNumber].manipulator;
+            
+            if (currentValue.isEmpty())
+            {
+                // Select the null option
+                comboBox->setSelectedId(1);
+            }
+            else
+            {
+                // Find the matching serial number
+                bool found = false;
+                for (int i = 0; i < availableSerialNumbers.size(); ++i)
+                {
+                    if (availableSerialNumbers[i] == currentValue)
+                    {
+                        comboBox->setSelectedId(i + 2); // +2 because we start from ID 2
+                        found = true;
+                        break;
+                    }
+                }
+                
+                // If not found in available serial numbers but we have saved serial numbers,
+                // add the current value as an option (marked as potentially invalid)
+                if (!found)
+                {
+                    if (!availableSerialNumbers.isEmpty())
+                    {
+                        // Add the current value as a special option to preserve it
+                        comboBox->addItem(currentValue + " (saved)", availableSerialNumbers.size() + 2);
+                        comboBox->setSelectedId(availableSerialNumbers.size() + 2);
+                    }
+                }
+            }
         }
         
         return comboBox;
@@ -326,12 +400,12 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
                 if (!isValidAngleInput(newText))
                 {
                     // Revert to previous valid value
-                    if (rowNumber < probeData.size())
+                    if (rowNumber < probeMetadata.size())
                     {
                         String validValue;
-                        if (columnId == 3) validValue = probeData[rowNumber].arcAngle;
-                        else if (columnId == 4) validValue = probeData[rowNumber].moduleAngle;
-                        else if (columnId == 5) validValue = probeData[rowNumber].rotation;
+                        if (columnId == 3) validValue = probeMetadata[rowNumber].arcAngle;
+                        else if (columnId == 4) validValue = probeMetadata[rowNumber].moduleAngle;
+                        else if (columnId == 5) validValue = probeMetadata[rowNumber].rotation;
                         
                         label->setText(validValue, dontSendNotification);
                         return;
@@ -339,24 +413,28 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
                 }
                 
                 // Update the data if valid
-                if (rowNumber < probeData.size())
+                if (rowNumber < probeMetadata.size())
                 {
-                    if (columnId == 3) probeData.getReference(rowNumber).arcAngle = newText;
-                    else if (columnId == 4) probeData.getReference(rowNumber).moduleAngle = newText;
-                    else if (columnId == 5) probeData.getReference(rowNumber).rotation = newText;
+                    if (columnId == 3) probeMetadata.getReference(rowNumber).arcAngle = newText;
+                    else if (columnId == 4) probeMetadata.getReference(rowNumber).moduleAngle = newText;
+                    else if (columnId == 5) probeMetadata.getReference(rowNumber).rotation = newText;
                     
                     LOGD("Angle value for row ", rowNumber, " column ", columnId, " changed to: ", newText);
                 }
             };
         }
+        else
+        {
+            label->setColour (Label::textColourId, findColour (ThemeColours::defaultText));
+        }
         
         // Set the current text based on the data
-        if (rowNumber < probeData.size())
+        if (rowNumber < probeMetadata.size())
         {
             String currentValue;
-            if (columnId == 3) currentValue = probeData[rowNumber].arcAngle;
-            else if (columnId == 4) currentValue = probeData[rowNumber].moduleAngle;
-            else if (columnId == 5) currentValue = probeData[rowNumber].rotation;
+            if (columnId == 3) currentValue = probeMetadata[rowNumber].arcAngle;
+            else if (columnId == 4) currentValue = probeMetadata[rowNumber].moduleAngle;
+            else if (columnId == 5) currentValue = probeMetadata[rowNumber].rotation;
             
             label->setText(currentValue, dontSendNotification);
         }
@@ -377,10 +455,10 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
         }
         
         // Set the button appearance based on whether surface has been set from Z
-        if (rowNumber < probeData.size())
+        if (rowNumber < probeMetadata.size())
         {
-            String currentSurface = probeData[rowNumber].surface;
-            String currentZ = probeData[rowNumber].z;
+            String currentSurface = probeMetadata[rowNumber].surface;
+            String currentZ = probeMetadata[rowNumber].z;
             
             // Check if surface value matches Z value (indicating it was copied)
             bool isSurfaceSetFromZ = (currentSurface == currentZ && currentSurface != "0.0" && !currentSurface.isEmpty());
@@ -427,18 +505,22 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
             // Add listener to update data when text changes
             autoCompleteEditor->onTextChange = [this, autoCompleteEditor, rowNumber]()
             {
-                if (rowNumber < probeData.size())
+                if (rowNumber < probeMetadata.size())
                 {
-                    probeData.getReference(rowNumber).targetStructure = autoCompleteEditor->getText();
+                    probeMetadata.getReference(rowNumber).targetStructure = autoCompleteEditor->getText();
                     //LOGD("Target structure for row ", rowNumber, " changed to: ", autoCompleteEditor->getText());
                 }
             };
         }
+        else
+        {
+            autoCompleteEditor->updateColours();
+        }
         
         // Set the current text based on the data
-        if (rowNumber < probeData.size())
+        if (rowNumber < probeMetadata.size())
         {
-            String currentValue = probeData[rowNumber].targetStructure;
+            String currentValue = probeMetadata[rowNumber].targetStructure;
             autoCompleteEditor->setText(currentValue, dontSendNotification);
         }
         
@@ -458,9 +540,9 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
         }
         
         // Set the button text and color based on the current dye value
-        if (rowNumber < probeData.size())
+        if (rowNumber < probeMetadata.size())
         {
-            String currentDye = probeData[rowNumber].dye;
+            String currentDye = probeMetadata[rowNumber].dye;
             if (currentDye == "CM-DiI")
             {
                 button->setButtonText("CM-DiI");
@@ -485,7 +567,7 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
                 button->setButtonText("CM-DiI");
                 button->setColour(TextButton::buttonColourId, Colours::darkred);
                 button->setColour(TextButton::textColourOnId, Colours::white);
-                probeData.getReference(rowNumber).dye = "CM-DiI";
+                probeMetadata.getReference(rowNumber).dye = "CM-DiI";
             }
         }
         
@@ -505,9 +587,9 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
         }
         
         // Set the button text to a truncated version of the notes
-        if (rowNumber < probeData.size())
+        if (rowNumber < probeMetadata.size())
         {
-            String fullNotes = probeData[rowNumber].notes;
+            String fullNotes = probeMetadata[rowNumber].notes;
             String displayText;
             
             if (fullNotes.isEmpty())
@@ -589,7 +671,35 @@ bool EphysMetadataGeneratorCanvas::isValidAngleInput(const String& text)
 
 void EphysMetadataGeneratorCanvas::comboBoxChanged(ComboBox* comboBoxThatHasChanged)
 {
-    LOGD("ComboBox: ", comboBoxThatHasChanged->getName(), " changed to ", comboBoxThatHasChanged->getText());
+    String comboBoxName = comboBoxThatHasChanged->getName();
+    LOGD("ComboBox: ", comboBoxName, " changed to ", comboBoxThatHasChanged->getText());
+    
+    // Handle manipulator ComboBox changes
+    if (comboBoxName.startsWith("Manipulator_"))
+    {
+        // Extract the row number from the ComboBox name
+        String rowString = comboBoxName.substring(12); // Remove "Manipulator_" prefix
+        int rowNumber = rowString.getIntValue();
+        
+        if (rowNumber < probeMetadata.size())
+        {
+            String selectedText = comboBoxThatHasChanged->getText();
+            
+            // Update the probe data with the selected manipulator
+            if (selectedText == "<Select Manipulator>" || selectedText.isEmpty())
+            {
+                // User selected the null option
+                probeMetadata.getReference(rowNumber).manipulator = "";
+            }
+            else
+            {
+                // User selected a valid serial number
+                probeMetadata.getReference(rowNumber).manipulator = selectedText;
+            }
+            
+            LOGD("Manipulator for row ", rowNumber, " changed to: ", probeMetadata[rowNumber].manipulator);
+        }
+    }
 }
 
 
@@ -614,7 +724,7 @@ void EphysMetadataGeneratorCanvas::buttonClicked(Button* buttonThatWasClicked)
     {
         // Create a new probe metadata entry with default values
         ProbeMetadata newProbe;
-        newProbe.probe = "Probe " + String(char('A' + probeData.size())); // Generate next letter
+        newProbe.probe = "Probe " + String(char('A' + probeMetadata.size())); // Generate next letter
         newProbe.manipulator = "62219"; // Default manipulator
         newProbe.arcAngle = "0";
         newProbe.moduleAngle = "0";
@@ -628,13 +738,13 @@ void EphysMetadataGeneratorCanvas::buttonClicked(Button* buttonThatWasClicked)
         newProbe.notes = "";
         
         // Add the new probe to the data array
-        probeData.add(newProbe);
+        probeMetadata.add(newProbe);
         
         // Update the table to show the new row
         metadataTable->updateContent();
         metadataTable->repaint();
         
-        LOGD("Added new probe row: ", newProbe.probe, " (total rows: ", probeData.size(), ")");
+        LOGD("Added new probe row: ", newProbe.probe, " (total rows: ", probeMetadata.size(), ")");
         
         return; // Early return to avoid checking other button types
     }
@@ -646,11 +756,11 @@ void EphysMetadataGeneratorCanvas::buttonClicked(Button* buttonThatWasClicked)
         String rowString = buttonName.substring(14); // Remove "SurfaceButton_" prefix
         int rowNumber = rowString.getIntValue();
         
-        if (rowNumber < probeData.size())
+        if (rowNumber < probeMetadata.size())
         {
             TextButton* surfaceButton = static_cast<TextButton*>(buttonThatWasClicked);
-            String currentSurface = probeData[rowNumber].surface;
-            String currentZ = probeData[rowNumber].z;
+            String currentSurface = probeMetadata[rowNumber].surface;
+            String currentZ = probeMetadata[rowNumber].z;
             
             // Check if surface is currently set from Z (button is active/green)
             bool isSurfaceSetFromZ = (currentSurface == currentZ && currentSurface != "0.0" && !currentSurface.isEmpty());
@@ -658,7 +768,7 @@ void EphysMetadataGeneratorCanvas::buttonClicked(Button* buttonThatWasClicked)
             if (isSurfaceSetFromZ)
             {
                 // Button is currently active - revert to inactive state
-                probeData.getReference(rowNumber).surface = "0.0";
+                probeMetadata.getReference(rowNumber).surface = "0.0";
                 
                 // Update button appearance to inactive state
                 surfaceButton->setButtonText("Set Surface");
@@ -670,7 +780,7 @@ void EphysMetadataGeneratorCanvas::buttonClicked(Button* buttonThatWasClicked)
             else
             {
                 // Button is currently inactive - set surface from Z value
-                probeData.getReference(rowNumber).surface = currentZ;
+                probeMetadata.getReference(rowNumber).surface = currentZ;
                 
                 // Update button appearance to active state
                 surfaceButton->setButtonText(currentZ);
@@ -691,16 +801,16 @@ void EphysMetadataGeneratorCanvas::buttonClicked(Button* buttonThatWasClicked)
         String rowString = buttonName.substring(10); // Remove "DyeButton_" prefix
         int rowNumber = rowString.getIntValue();
         
-        if (rowNumber < probeData.size())
+        if (rowNumber < probeMetadata.size())
         {
             TextButton* dyeButton = static_cast<TextButton*>(buttonThatWasClicked);
-            String currentDye = probeData[rowNumber].dye;
+            String currentDye = probeMetadata[rowNumber].dye;
             
             // Toggle between the three dye options
             if (currentDye == "CM-DiI")
             {
                 // Switch to DS-DiD
-                probeData.getReference(rowNumber).dye = "DS-DiD";
+                probeMetadata.getReference(rowNumber).dye = "DS-DiD";
                 dyeButton->setButtonText("DS-DiD");
                 dyeButton->setColour(TextButton::buttonColourId, Colours::darkblue);
                 dyeButton->setColour(TextButton::textColourOnId, Colours::white);
@@ -709,7 +819,7 @@ void EphysMetadataGeneratorCanvas::buttonClicked(Button* buttonThatWasClicked)
             else if (currentDye == "DS-DiD")
             {
                 // Switch to None
-                probeData.getReference(rowNumber).dye = "None";
+                probeMetadata.getReference(rowNumber).dye = "None";
                 dyeButton->setButtonText("None");
                 dyeButton->setColour(TextButton::buttonColourId, Colours::darkgrey);
                 dyeButton->setColour(TextButton::textColourOnId, Colours::white);
@@ -717,7 +827,7 @@ void EphysMetadataGeneratorCanvas::buttonClicked(Button* buttonThatWasClicked)
             }
             else {
                 // Switch back to CM-DiI
-                probeData.getReference(rowNumber).dye = "CM-DiI";
+                probeMetadata.getReference(rowNumber).dye = "CM-DiI";
                 dyeButton->setButtonText("CM-DiI");
                 dyeButton->setColour(TextButton::buttonColourId, Colours::darkred);
                 dyeButton->setColour(TextButton::textColourOnId, Colours::white);
@@ -735,10 +845,10 @@ void EphysMetadataGeneratorCanvas::buttonClicked(Button* buttonThatWasClicked)
         String rowString = buttonName.substring(13); // Remove "DeleteButton_" prefix
         int rowNumber = rowString.getIntValue();
         
-        if (rowNumber < probeData.size())
+        if (rowNumber < probeMetadata.size())
         {
             // Show confirmation dialog before deleting
-            String probeIdentifier = probeData[rowNumber].probe;
+            String probeIdentifier = probeMetadata[rowNumber].probe;
             
             // Create a confirmation dialog
             bool shouldDelete = AlertWindow::showOkCancelBox(
@@ -752,13 +862,13 @@ void EphysMetadataGeneratorCanvas::buttonClicked(Button* buttonThatWasClicked)
             if (shouldDelete)
             {
                 // Remove the probe from the data array
-                probeData.remove(rowNumber);
+                probeMetadata.remove(rowNumber);
                 
                 // Update the table to reflect the deletion
                 metadataTable->updateContent();
                 metadataTable->repaint();
                 
-                LOGD("Deleted probe row: ", probeIdentifier, " (remaining rows: ", probeData.size(), ")");
+                LOGD("Deleted probe row: ", probeIdentifier, " (remaining rows: ", probeMetadata.size(), ")");
             }
             else
             {
@@ -773,15 +883,15 @@ void EphysMetadataGeneratorCanvas::buttonClicked(Button* buttonThatWasClicked)
         String rowString = buttonName.substring(12); // Remove "NotesButton_" prefix
         int rowNumber = rowString.getIntValue();
         
-        if (rowNumber < probeData.size())
+        if (rowNumber < probeMetadata.size())
         {
             // Create and show the popup editor
-            String currentNotes = probeData[rowNumber].notes;
+            String currentNotes = probeMetadata[rowNumber].notes;
             
             auto popup = new NotesEditorPopup(currentNotes, [this, rowNumber](const String& newText)
             {
                 // Update the notes data
-                probeData.getReference(rowNumber).notes = newText;
+                probeMetadata.getReference(rowNumber).notes = newText;
                 LOGD("Notes for row ", rowNumber, " changed to: ", newText);
                 
                 // Update the table to reflect the change
@@ -805,18 +915,93 @@ void EphysMetadataGeneratorCanvas::stagePositionsUpdated(const Array<StagePositi
 {
     LOGD("Received ", positions.size(), " stage positions from HTTP endpoint");
     
-    // Update the X, Y, Z values for each row based on the received positions
-    for (int i = 0; i < jmin(positions.size(), probeData.size()); ++i)
+    // Store the available serial numbers in the global array (merge with existing)
+    for (const auto& stagePos : positions)
     {
-        const StagePosition& pos = positions[i];
-        
-        // Update the probe data
-        probeData.getReference(i).x = pos.x;
-        probeData.getReference(i).y = pos.y;
-        probeData.getReference(i).z = pos.z;
-        
-        LOGD("Updated row ", i, " with position: X=", pos.x, " Y=", pos.y, " Z=", pos.z);
+        if (!availableSerialNumbers.contains(stagePos.serialNumber))
+        {
+            availableSerialNumbers.add(stagePos.serialNumber);
+        }
     }
+
+    // Only validate and clear manipulators if we have valid serial numbers available
+    // AND this is not the first time we've received data (to preserve saved assignments)
+    bool needsManipulatorUpdate = false;
+    if (!availableSerialNumbers.isEmpty())
+    {
+        for (int probeIndex = 0; probeIndex < probeMetadata.size(); ++probeIndex)
+        {
+            ProbeMetadata& probe = probeMetadata.getReference(probeIndex);
+            
+            // Only clear manipulators if they don't match available serial numbers
+            // AND the manipulator is not empty (to preserve user selections)
+            if (!probe.manipulator.isEmpty() && !availableSerialNumbers.contains(probe.manipulator))
+            {
+                LOGD("Probe ", probeIndex, " manipulator '", probe.manipulator, "' does not match any available serial numbers - clearing");
+                
+                // Set manipulator to null (empty string)
+                probe.manipulator = "";
+                needsManipulatorUpdate = true;
+            }
+        }
+    }
+    
+    // If we need to update manipulators, refresh the table to update ComboBoxes
+    if (needsManipulatorUpdate)
+    {
+        LOGD("Updating table to reflect new serial numbers in ComboBoxes");
+        metadataTable->updateContent();
+    }
+    
+    int updatedCount = 0;
+    
+    // Update the X, Y, Z values only for probes whose manipulator matches the stage serial number
+    for (const auto& stagePos : positions)
+    {
+        // Find matching probe metadata by comparing manipulator string with stage serial number
+        for (int probeIndex = 0; probeIndex < probeMetadata.size(); ++probeIndex)
+        {
+            ProbeMetadata& probe = probeMetadata.getReference(probeIndex);
+            
+            // Check if the probe's manipulator string matches the stage's serial number
+            if (probe.manipulator == stagePos.serialNumber)
+            {
+                // Update the probe position data
+                probe.x = stagePos.x;
+                probe.y = stagePos.y;
+                probe.z = stagePos.z;
+                
+                LOGD("Updated probe row ", probeIndex, " (manipulator: ", probe.manipulator, 
+                     ") with stage position from serial ", stagePos.serialNumber, 
+                     ": X=", stagePos.x, " Y=", stagePos.y, " Z=", stagePos.z);
+                
+                updatedCount++;
+            }
+        }
+    }
+    
+    // Log unmatched stages for debugging
+    if (updatedCount < positions.size())
+    {
+        for (const auto& stagePos : positions)
+        {
+            bool found = false;
+            for (int probeIndex = 0; probeIndex < probeMetadata.size(); ++probeIndex)
+            {
+                if (probeMetadata[probeIndex].manipulator == stagePos.serialNumber)
+                {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found)
+            {
+                LOGD("No matching probe found for stage serial number: ", stagePos.serialNumber);
+            }
+        }
+    }
+    
+    LOGD("Updated ", updatedCount, " out of ", positions.size(), " stage positions");
     
     // Refresh the table to show updated values
     metadataTable->updateContent();
@@ -834,13 +1019,13 @@ void EphysMetadataGeneratorCanvas::stagePositionError(const String& errorMessage
 // XML serialization methods
 void EphysMetadataGeneratorCanvas::saveCustomParametersToXml(XmlElement* xml)
 {
-    XmlElement* probeDataElement = xml->createNewChildElement("PROBE_METADATA");
+    XmlElement* probeMetadataElement = xml->createNewChildElement("PROBE_METADATA");
     
-    for (int i = 0; i < probeData.size(); ++i)
+    for (int i = 0; i < probeMetadata.size(); ++i)
     {
-        const ProbeMetadata& probe = probeData[i];
+        const ProbeMetadata& probe = probeMetadata[i];
         
-        XmlElement* probeElement = probeDataElement->createNewChildElement("PROBE");
+        XmlElement* probeElement = probeMetadataElement->createNewChildElement("PROBE");
         probeElement->setAttribute("index", i);
         
         // Save all probe metadata fields
@@ -864,20 +1049,32 @@ void EphysMetadataGeneratorCanvas::saveCustomParametersToXml(XmlElement* xml)
         xml->setAttribute("serverAddress", serverAddressEditor->getText());
     }
     
-    LOGD("Saved ", probeData.size(), " probe metadata entries to XML");
+    // Save available serial numbers
+    if (!availableSerialNumbers.isEmpty())
+    {
+        XmlElement* serialNumbersElement = xml->createNewChildElement("AVAILABLE_SERIAL_NUMBERS");
+        for (int i = 0; i < availableSerialNumbers.size(); ++i)
+        {
+            XmlElement* serialElement = serialNumbersElement->createNewChildElement("SERIAL");
+            serialElement->setAttribute("number", availableSerialNumbers[i]);
+        }
+        LOGD("Saved ", availableSerialNumbers.size(), " available serial numbers to XML");
+    }
+    
+    LOGD("Saved ", probeMetadata.size(), " probe metadata entries to XML");
 }
 
 void EphysMetadataGeneratorCanvas::loadCustomParametersFromXml(XmlElement* xml)
 {
     // Clear existing probe data
-    probeData.clear();
+    probeMetadata.clear();
     
-    XmlElement* probeDataElement = xml->getChildByName("PROBE_METADATA");
+    XmlElement* probeMetadataElement = xml->getChildByName("PROBE_METADATA");
     
-    if (probeDataElement != nullptr)
+    if (probeMetadataElement != nullptr)
     {
         // Load each probe entry
-        forEachXmlChildElement(*probeDataElement, probeElement)
+        forEachXmlChildElement(*probeMetadataElement, probeElement)
         {
             if (probeElement->hasTagName("PROBE"))
             {
@@ -897,11 +1094,11 @@ void EphysMetadataGeneratorCanvas::loadCustomParametersFromXml(XmlElement* xml)
                 probe.dye = probeElement->getStringAttribute("dye", "CM-DiI");
                 probe.notes = probeElement->getStringAttribute("notes", "");
                 
-                probeData.add(probe);
+                probeMetadata.add(probe);
             }
         }
         
-        LOGD("Loaded ", probeData.size(), " probe metadata entries from XML");
+        LOGD("Loaded ", probeMetadata.size(), " probe metadata entries from XML");
     }
     else
     {
@@ -911,10 +1108,32 @@ void EphysMetadataGeneratorCanvas::loadCustomParametersFromXml(XmlElement* xml)
         return; // Exit early since initializeTable() already updates the table
     }
     
+    // Load available serial numbers
+    availableSerialNumbers.clear();
+    XmlElement* serialNumbersElement = xml->getChildByName("AVAILABLE_SERIAL_NUMBERS");
+    if (serialNumbersElement != nullptr)
+    {
+        forEachXmlChildElement(*serialNumbersElement, serialElement)
+        {
+            if (serialElement->hasTagName("SERIAL"))
+            {
+                String serialNumber = serialElement->getStringAttribute("number", "");
+                if (serialNumber.isNotEmpty())
+                {
+                    availableSerialNumbers.add(serialNumber);
+                }
+            }
+        }
+    }
+    else
+    {
+        LOGD("No available serial numbers found in XML");
+    }
+    
     // Load server address setting
     if (serverAddressEditor != nullptr)
     {
-        String savedServerAddress = xml->getStringAttribute("serverAddress", "localhost:8080");
+        String savedServerAddress = xml->getStringAttribute("serverAddress", "10.128.49.150:8080");
         serverAddressEditor->setText(savedServerAddress, false);
         LOGD("Loaded server address: ", savedServerAddress);
     }
@@ -942,7 +1161,7 @@ void EphysMetadataGeneratorCanvas::updateStageListenerEndpoint()
     }
     
     // Parse the server address to extract IP/hostname and port
-    String host = "localhost";
+    String host = "10.128.49.150";
     int port = 8080;
     
     if (serverAddress.contains(":"))
@@ -990,7 +1209,7 @@ void EphysMetadataGeneratorCanvas::updateStageListenerEndpoint()
     // Restart the listener if it was previously running
     if (wasListening)
     {
-        //stageListener->startListening();
+        stageListener->startListening();
         LOGD("Restarted stage listener with new endpoint");
         
         // Update the connect button to show it's connected
@@ -1004,7 +1223,7 @@ void EphysMetadataGeneratorCanvas::updateStageListenerEndpoint()
     else
     {
         // Start listening with the new endpoint
-        //stageListener->startListening();
+        stageListener->startListening();
         LOGD("Started stage listener with new endpoint: ", newEndpoint);
         
         // Update the connect button to show it's connected
@@ -1017,3 +1236,17 @@ void EphysMetadataGeneratorCanvas::updateStageListenerEndpoint()
     }
 }
 
+Metadata::Acquisition EphysMetadataGeneratorCanvas::getLatestMetadata()
+{
+
+    Metadata::Acquisition acquisition;
+
+    acquisition.subject_id = "Subject ID";
+    acquisition.acquisition_start_time = Time::getCurrentTime();
+
+    acquisition.acquisition_type = "Extracellular ephys experiment";
+
+    return acquisition;
+
+
+}

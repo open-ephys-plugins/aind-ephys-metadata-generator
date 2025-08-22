@@ -35,10 +35,11 @@ struct StagePosition
     String y;
     String z;
     Time timestamp;
+    String serialNumber;
     
     StagePosition() = default;
-    StagePosition(const String& xPos, const String& yPos, const String& zPos)
-        : x(xPos), y(yPos), z(zPos), timestamp(Time::getCurrentTime()) {}
+    StagePosition(const String& serialNumber_, const String& xPos, const String& yPos, const String& zPos)
+        : serialNumber(serialNumber_), x(xPos), y(yPos), z(zPos), timestamp(Time::getCurrentTime()) {}
 };
 
 /**
@@ -76,8 +77,8 @@ public:
      * @param intervalMs Update interval in milliseconds (default: 10000 = 10 seconds)
      */
     StageListener(StagePositionListener* listener, 
-                  const String& endpoint = "http://localhost:8080/stage/positions",
-                  int intervalMs = 10000);
+                  const String& endpoint = "http://10.128.49.150:8080/stage/positions",
+                  int intervalMs = 2000);
     
     /**
      * Destructor

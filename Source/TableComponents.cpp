@@ -172,7 +172,7 @@ void AutoCompleteSuggestionList::paintListBoxItem(int rowNumber, Graphics& g, in
         g.fillRect(0, 0, width, height);
     }
     
-    g.setColour(Colours::black);
+    g.setColour(findColour(ThemeColours::defaultText));
     g.setFont(14.0f);
     
     if (rowNumber < filteredSuggestions.size())
@@ -214,6 +214,9 @@ AutoCompleteTextEditor::AutoCompleteTextEditor(const StringArray& suggestions)
 {
     addListener(this);
     setWantsKeyboardFocus(true);
+    
+    // Set initial colors to match the theme
+    updateColours();
 }
 
 AutoCompleteTextEditor::~AutoCompleteTextEditor()
@@ -280,16 +283,21 @@ void AutoCompleteTextEditor::focusLost(FocusChangeType cause)
 {
     // Only hide suggestions if focus is lost for reasons other than clicking on the suggestion list
     // Use a longer delay to allow for suggestion list interaction
-    Timer::callAfterDelay(150, [this]() {
+    WeakReference<AutoCompleteTextEditor> safeThis(this);
+    Timer::callAfterDelay(150, [safeThis]() {
+        // Check if component still exists before accessing it
+        if (safeThis == nullptr)
+            return;
+            
         // Check if the suggestion list itself has focus or if we got focus back
-        if (hasKeyboardFocus(false) || (suggestionList && suggestionList->hasKeyboardFocus(true)))
+        if (safeThis->hasKeyboardFocus(false) || (safeThis->suggestionList && safeThis->suggestionList->hasKeyboardFocus(true)))
         {
             return; // Don't hide if we or the suggestion list has focus
         }
-        hideSuggestions();
+        safeThis->hideSuggestions();
         
         // Validate the current text against available suggestions
-        validateText();
+        safeThis->validateText();
     });
     
     TextEditor::focusLost(cause);
@@ -300,16 +308,42 @@ void AutoCompleteTextEditor::setSuggestions(const StringArray& newSuggestions)
     allSuggestions = newSuggestions;
 }
 
+void AutoCompleteTextEditor::updateColours()
+{
+    // Update the TextEditor colors to match the current theme
+    setColour(TextEditor::backgroundColourId, Colours::white.withAlpha(0.0f));
+    setColour(TextEditor::textColourId, findColour(ThemeColours::defaultText));
+    setColour(TextEditor::highlightColourId, Colours::lightblue.withAlpha(0.5f));
+    setColour(TextEditor::highlightedTextColourId, Colours::black);
+    setColour(TextEditor::outlineColourId, Colours::white.withAlpha(0.0f));
+    setColour(TextEditor::focusedOutlineColourId, Colours::white.withAlpha(0.0f));
+    
+    // Repaint to apply the new colors
+    repaint();
+}
+
 void AutoCompleteTextEditor::showSuggestions(const StringArray& suggestions)
 {
+    // Create a WeakReference to check validity throughout this method
+    WeakReference<AutoCompleteTextEditor> safeThis(this);
+    if (safeThis == nullptr)
+        return;
+        
     if (suggestionList == nullptr)
     {
         suggestionList = std::make_unique<AutoCompleteSuggestionList>(suggestions, 
             [this](const String& selection)
             {
-                setText(selection);
-                hideSuggestions();
-                grabKeyboardFocus();
+                // Use WeakReference to safely check if component still exists
+                WeakReference<AutoCompleteTextEditor> safeThis(this);
+                if (safeThis != nullptr)
+                {
+                    setText(selection);
+                    hideSuggestions();
+                    // Only grab focus if component is still valid and visible
+                    if (safeThis != nullptr && safeThis->isShowing())
+                        safeThis->grabKeyboardFocus();
+                }
             });
     }
     else
@@ -340,8 +374,9 @@ void AutoCompleteTextEditor::showSuggestions(const StringArray& suggestions)
             suggestionList->listBox->selectRow(0);
         }
         
-        // Ensure the TextEditor maintains keyboard focus
-        grabKeyboardFocus();
+        // Ensure the TextEditor maintains keyboard focus - only if still showing
+        if (safeThis != nullptr && safeThis->isShowing())
+            safeThis->grabKeyboardFocus();
     }
 }
 

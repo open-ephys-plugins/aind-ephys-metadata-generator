@@ -25,6 +25,7 @@
 #define ACQUISITION_H_DEFINED
 
 #include <VisualizerEditorHeaders.h>
+#include "CCFRegions.h"
 
 /**
     The editor for the EphysMetadataGenerator
@@ -32,7 +33,7 @@
     Includes buttons for opening the canvas in a tab or window
 */
 
-#define schemaVersion "2.0.34"
+#define SCHEMA_VERSION "2.0.34"
 
 namespace Metadata
 {
@@ -50,7 +51,7 @@ struct Probe
     String name;
     
     /** Primary targeted structure*/
-    String primaryTargetedStructure;
+    Region primary_targeted_structure;
     
     /** Surface Z */
     double surfaceZ = 0.0;
@@ -118,10 +119,10 @@ struct EphysAssembly
 struct DataStream
 {
     /** Start time **/
-    Time startTime;
+    Time stream_start_time;
     
     /** End time */
-    Time endTime;
+    Time stream_end_time;
     
     /** Active devices */
     StringArray activeDevices;
@@ -134,30 +135,61 @@ struct DataStream
 
 struct Acquisition
 {
+    /** Object type */
+    String object_type = "Acquisition";
+
+    /** Described by */
+    String describedBy = "https://raw.githubusercontent.com/AllenNeuralDynamics/aind-data-schema/main/src/aind_data_schema/core/acquisition.py";
+
+    /** Schema version */
+    String schema_version = SCHEMA_VERSION;
+
     /** Subject ID*/
-    String subjectID;
+    String subject_id;
+
+    /** Specimen ID*/
+    String specimen_id;
     
     /** Start time **/
-    Time startTime;
+    Time acquisition_start_time;
     
     /** End time */
-    Time endTime;
+    Time acquisition_end_time;
     
     /** Experimenters */
     StringArray experimenters;
+
+    /** Protocol ID*/
+    String protocol_id;
+
+    /** Ethics review ID */
+    StringArray ethics_review_id;
     
     /** Instrument ID*/
-    String instrumentID;
+    String instrument_id;
     
-    /** Acquisition  type */
-    String acquisitionType;
+    /** Acquisition type */
+    String acquisition_type;
     
+    /** Notes */
+    String notes;
+
     /** Coordinate system*/
-    CoordinateSystem coordinateSystem;
+    CoordinateSystem coordinate_system;
     
     /** Data streams*/
-    OwnedArray<DataStream> dataStreams;
+    OwnedArray<DataStream> data_streams;
     
+    /** Sets end time for all streams */
+    void setEndTime (const Time& endTime)
+    {
+        this->acquisition_end_time = endTime;
+        for (auto* stream : data_streams)
+        {
+            stream->stream_start_time = endTime;
+        }
+    }
+
     /**
      * Write all acquisition data to a JSON file
      * @param filePath Path where the JSON file should be written

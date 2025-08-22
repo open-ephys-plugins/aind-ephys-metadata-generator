@@ -237,83 +237,39 @@ Array<StagePosition> StageListener::parseStagePositions(const String& jsonString
             return positions;
         }
         
-        // Look for different possible JSON structures
-        // Structure 1: Direct array [{"x": 1.0, "y": 2.0, "z": 3.0}, ...]
-        if (json.isArray())
-        {
-            for (int i = 0; i < json.size(); ++i)
-            {
-                var posObj = json[i];
-                if (posObj.isObject())
-                {
-                    String x = posObj.getProperty("x", 0.0).toString();
-                    String y = posObj.getProperty("y", 0.0).toString();
-                    String z = posObj.getProperty("z", 0.0).toString();
-                    positions.add(StagePosition(x, y, z));
-                }
-            }
-        }
-        // Structure 2: Object with nested structures
-        else if (json.isObject())
+        // Parse stage server JSON response format
+        if (json.isObject())
         {
             var jsonObject = json.getDynamicObject();
-            if (jsonObject != nullptr)
+
+            // Check for ProbeArray in the stage server response
+            if (jsonObject.hasProperty ("ProbeArray"))
             {
-                // Structure 2a: { "positions": [{"x": 1.0, "y": 2.0, "z": 3.0}, ...] }
-                if (jsonObject.hasProperty("positions"))
+                var probeArray = jsonObject.getProperty ("ProbeArray", var());
+                if (probeArray.isArray())
                 {
-                    var positionsArray = jsonObject.getProperty("positions", var());
-                    if (positionsArray.isArray())
+                    for (int i = 0; i < probeArray.size(); ++i)
                     {
-                        for (int i = 0; i < positionsArray.size(); ++i)
+                        var probeObj = probeArray[i];
+                        if (probeObj.isObject())
                         {
-                            var posObj = positionsArray[i];
-                            if (posObj.isObject())
-                            {
-                                String x = posObj.getProperty("x", 0.0).toString();
-                                String y = posObj.getProperty("y", 0.0).toString();
-                                String z = posObj.getProperty("z", 0.0).toString();
-                                positions.add(StagePosition(x, y, z));
-                            }
+                            // Extract SerialNumber, Stage_X, Stage_Y, Stage_Z
+                            String serialNumber = probeObj.getProperty ("SerialNumber", "").toString();
+                            String stageX = probeObj.getProperty ("Stage_X", 0.0).toString();
+                            String stageY = probeObj.getProperty ("Stage_Y", 0.0).toString();
+                            String stageZ = probeObj.getProperty ("Stage_Z", 0.0).toString();
+
+                            positions.add (StagePosition (serialNumber, stageX, stageY, stageZ));
+
+                            LOGD ("StageListener: Parsed probe - Serial: ", serialNumber, ", X: ", stageX, ", Y: ", stageY, ", Z: ", stageZ);
                         }
                     }
-                }
-                // Structure 2b: { "probes": [{"probe_id": "A", "x": 1.0, "y": 2.0, "z": 3.0}, ...] }
-                else if (jsonObject.hasProperty("probes"))
-                {
-                    var probesArray = jsonObject.getProperty("probes", var());
-                    if (probesArray.isArray())
-                    {
-                        for (int i = 0; i < probesArray.size(); ++i)
-                        {
-                            var probeObj = probesArray[i];
-                            if (probeObj.isObject())
-                            {
-                                String x = probeObj.getProperty("x", 0.0).toString();
-                                String y = probeObj.getProperty("y", 0.0).toString();
-                                String z = probeObj.getProperty("z", 0.0).toString();
-                                positions.add(StagePosition(x, y, z));
-                            }
-                        }
-                    }
-                }
-                // Structure 2c: Single position object {"x": 1.0, "y": 2.0, "z": 3.0}
-                else if (jsonObject.hasProperty("x") || jsonObject.hasProperty("y") || jsonObject.hasProperty("z"))
-                {
-                    String x = jsonObject.getProperty("x", 0.0).toString();
-                    String y = jsonObject.getProperty("y", 0.0).toString();
-                    String z = jsonObject.getProperty("z", 0.0).toString();
-                    positions.add(StagePosition(x, y, z));
-                }
-                else
-                {
-                    LOGC("StageListener: Unrecognized JSON object structure");
                 }
             }
-        }
-        else
-        {
-            LOGC("StageListener: Unrecognized JSON structure (not array or object)");
+            else
+            {
+                LOGC("StageListener: Unrecognized JSON object structure");
+            }
         }
         
         LOGD("StageListener: Parsed ", positions.size(), " stage positions");

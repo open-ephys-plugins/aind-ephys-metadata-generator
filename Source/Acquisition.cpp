@@ -50,31 +50,50 @@ var Acquisition::toJSON() const
     DynamicObject* jsonObj = new DynamicObject();
     
     // Basic fields
-    jsonObj->setProperty("subjectID", subjectID);
-    jsonObj->setProperty("startTime", startTime.toISO8601(true));
-    jsonObj->setProperty("endTime", endTime.toISO8601(true));
-    jsonObj->setProperty("instrumentID", instrumentID);
-    jsonObj->setProperty("acquisitionType", acquisitionType);
-    jsonObj->setProperty("coordinateSystem", coordinateSystemToString(coordinateSystem));
-    
-    // Experimenters array
+    jsonObj->setProperty ("object_type", object_type);
+    jsonObj->setProperty ("describedBy", describedBy);
+    jsonObj->setProperty ("schema_version", schema_version);
+    jsonObj->setProperty ("subject_id", subject_id);
+    jsonObj->setProperty ("acquisition_start_time", acquisition_start_time.toISO8601 (true));
+    jsonObj->setProperty ("acquisition_end_time", acquisition_end_time.toISO8601 (true));
+
     var experimentersArray;
     for (int i = 0; i < experimenters.size(); ++i)
     {
-        experimentersArray.append(experimenters[i]);
+        experimentersArray.append (experimenters[i]);
     }
-    jsonObj->setProperty("experimenters", experimentersArray);
+    jsonObj->setProperty ("experimenters", experimentersArray);
+    
+    jsonObj->setProperty ("protocol_id", protocol_id);
+    
+    var ethics_review_array;
+    for (int i = 0; i < ethics_review_id.size(); ++i)
+    {
+        ethics_review_array.append (ethics_review_id[i]);
+    }
+    jsonObj->setProperty ("ethics_review_id", ethics_review_array);
+    
+    jsonObj->setProperty ("instrument_id", instrument_id);
+    jsonObj->setProperty ("acquisition_type", acquisition_type);
+    jsonObj->setProperty ("coordinate_system", coordinateSystemToString (coordinate_system));
+    
+    var calibrations;
+    jsonObj->setProperty ("calibrations", calibrations);
+
+    var maintenance;
+    jsonObj->setProperty ("calibrations", maintenance);
+    
     
     // Data streams array
     var dataStreamsArray;
-    for (int i = 0; i < dataStreams.size(); ++i)
+    for (int i = 0; i < data_streams.size(); ++i)
     {
-        if (dataStreams[i] != nullptr)
+        if (data_streams[i] != nullptr)
         {
-            dataStreamsArray.append(dataStreamToJSON(*dataStreams[i]));
+            dataStreamsArray.append (dataStreamToJSON (*data_streams[i]));
         }
     }
-    jsonObj->setProperty("dataStreams", dataStreamsArray);
+    jsonObj->setProperty("data_streams", dataStreamsArray);
     
     return var(jsonObj);
 }
@@ -83,7 +102,7 @@ var Acquisition::probeToJSON(const Probe& probe)
 {
     DynamicObject* jsonObj = new DynamicObject();
     jsonObj->setProperty("name", probe.name);
-    jsonObj->setProperty("primaryTargetedStructure", probe.primaryTargetedStructure);
+    jsonObj->setProperty("primaryTargetedStructure", probe.primary_targeted_structure.name);
     jsonObj->setProperty("surfaceZ", probe.surfaceZ);
     jsonObj->setProperty("finalZ", probe.finalZ);
     jsonObj->setProperty("dye", probe.dye);
@@ -124,8 +143,8 @@ var Acquisition::ephysAssemblyToJSON(const EphysAssembly& assembly)
 var Acquisition::dataStreamToJSON(const DataStream& stream)
 {
     DynamicObject* jsonObj = new DynamicObject();
-    jsonObj->setProperty("startTime", stream.startTime.toISO8601(true));
-    jsonObj->setProperty("endTime", stream.endTime.toISO8601(true));
+    jsonObj->setProperty("startTime", stream.stream_start_time.toISO8601(true));
+    jsonObj->setProperty("endTime", stream.stream_end_time.toISO8601(true));
     
     // Active devices array
     var activeDevicesArray;

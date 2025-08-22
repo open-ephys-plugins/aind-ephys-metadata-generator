@@ -40,6 +40,12 @@ void EphysMetadataGenerator::updateSettings()
     // update the table model in the canvas
 }
 
+void EphysMetadataGenerator::startRecording()
+{
+    EphysMetadataGeneratorEditor* thisEditor = dynamic_cast<EphysMetadataGeneratorEditor*> (getEditor());
+    acquisition = thisEditor->getLatestMetadata();
+}
+
 void EphysMetadataGenerator::stopRecording()
 {
     
@@ -53,12 +59,20 @@ void EphysMetadataGenerator::stopRecording()
     {
         recordingDirectory.createDirectory();
     }
+
+    // Get the experiment number
+
+    int firstRecNodeId = CoreServices::getAvailableRecordNodeIds().getFirst();
+    int experimentNum = CoreServices::RecordNode::getExperimentNumber (firstRecNodeId);
+    int recordingNum = CoreServices::RecordNode::getRecordingNumber (firstRecNodeId);
+
+    String filename = String ("ephys_acquisition_" + String (experimentNum) + "_" + String (recordingNum) + ".json");
     
     // Save the metadata file in the recording directory
-    File metadataFile = recordingDirectory.getChildFile ("ephys_stream.json");
+    File metadataFile = recordingDirectory.getChildFile (filename);
     
     // Create the metadata object and save it
-    Metadata::Acquisition acquisition;
+    acquisition.setEndTime (Time::getCurrentTime());
     acquisition.writeToJSON(metadataFile);
     
 }

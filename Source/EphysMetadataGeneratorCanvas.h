@@ -77,6 +77,9 @@ public:
     void paintCell(Graphics& g, int rowNumber, int columnId, int width, int height, bool rowIsSelected) override;
     Component* refreshComponentForCell(int rowNumber, int columnId, bool isRowSelected, Component* existingComponentToUpdate) override;
 
+    /** Fills Acquisition metadata object and returns */
+    Metadata::Acquisition getLatestMetadata();
+
 private:
     /** Pointer to the processor class */
     EphysMetadataGenerator* processor;
@@ -101,7 +104,10 @@ private:
     };
 
     /** Array to hold the probe metadata */
-    Array<ProbeMetadata> probeData;
+    Array<ProbeMetadata> probeMetadata;
+    
+    /** Array to hold available serial numbers from stage server */
+    Array<String> availableSerialNumbers;
 
     /** Initialize the table with columns and sample data */
     void initializeTable();
@@ -138,6 +144,11 @@ private:
     
     /** Update the stage listener endpoint based on current IP and port settings */
     void updateStageListenerEndpoint();
+    
+    /** Called when the LookAndFeel changes - updates component colors */
+    void lookAndFeelChanged() override;
+
+
 
     /** Generates an assertion if this class leaks */
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (EphysMetadataGeneratorCanvas);

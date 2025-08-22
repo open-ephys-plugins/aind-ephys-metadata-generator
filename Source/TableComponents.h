@@ -70,6 +70,7 @@ class AutoCompleteTextEditor : public TextEditor,
                                public TextEditor::Listener
 {
 public:
+    JUCE_DECLARE_WEAK_REFERENCEABLE(AutoCompleteTextEditor)
     AutoCompleteTextEditor(const StringArray& suggestions);
     ~AutoCompleteTextEditor();
     
@@ -78,6 +79,8 @@ public:
     void focusLost(FocusChangeType cause) override;
     
     void setSuggestions(const StringArray& newSuggestions);
+
+    void updateColours();
     
 private:
     StringArray allSuggestions;
