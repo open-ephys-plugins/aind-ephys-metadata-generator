@@ -44,92 +44,206 @@ enum CoordinateSystem
     MPM_MANIP_RFB = 1
 };
 
-
-struct Probe
+struct Axis
 {
-    /** Probe name */
+    /** Object type */
+    String object_type = "Axis";
+    
+    /** Name */
     String name;
     
-    /** Primary targeted structure*/
+    /** Direction */
+    String direction;
+};
+
+struct CoordinateSystemObject
+{
+    /** Object type */
+    String object_type = "Coordinate system";
+    
+    /** Name */
+    String name;
+    
+    /** Origin */
+    String origin;
+    
+    /** Axes */
+    Array<Axis> axes;
+    
+    /** Axis unit */
+    String axis_unit = "millimeter";
+};
+
+struct Translation
+{
+    /** Object type */
+    String object_type = "Translation";
+    
+    /** Translation values */
+    Array<double> translation;
+};
+
+struct Rotation
+{
+    /** Object type */
+    String object_type = "Rotation";
+    
+    /** Angles */
+    Array<double> angles;
+    
+    /** Angles unit */
+    String angles_unit = "degrees";
+};
+
+struct Modality
+{
+    /** Name */
+    String name;
+    
+    /** Abbreviation */
+    String abbreviation;
+};
+
+struct SubjectDetails
+{
+    /** Object type */
+    String object_type = "Acquisition subject details";
+    
+    /** Animal weight prior */
+    var animal_weight_prior; // can be null
+    
+    /** Animal weight post */
+    var animal_weight_post; // can be null
+    
+    /** Weight unit */
+    String weight_unit = "gram";
+    
+    /** Anaesthesia */
+    var anaesthesia; // can be null
+    
+    /** Mouse platform name */
+    String mouse_platform_name;
+    
+    /** Reward consumed total */
+    var reward_consumed_total; // can be null
+    
+    /** Reward consumed unit */
+    var reward_consumed_unit; // can be null
+};
+
+
+struct ProbeConfig
+{
+    /** Object type */
+    String object_type = "Probe config";
+    
+    /** Device name */
+    String device_name;
+    
+    /** Primary targeted structure */
     Region primary_targeted_structure;
     
-    /** Surface Z */
-    double surfaceZ = 0.0;
+    /** Other targeted structure */
+    var other_targeted_structure; // can be null
     
-    /** Final Z*/
-    double finalZ = 0.0;
+    /** Atlas coordinate */
+    var atlas_coordinate; // can be null
+    
+    /** Coordinate system */
+    CoordinateSystemObject coordinate_system;
+    
+    /** Transform */
+    Array<var> transform; // Array of Translation and Rotation objects
     
     /** Dye */
     String dye;
     
     /** Notes */
     String notes;
-    
 };
 
-struct MISModule
+struct ManipulatorConfig
 {
-    /** Arc angle*/
-    double arcAngle = 0.0;
+    /** Object type */
+    String object_type = "Manipulator config";
+    
+    /** Device name */
+    String device_name;
+    
+    /** Coordinate system */
+    CoordinateSystemObject coordinate_system;
+    
+    /** Local axis positions */
+    Translation local_axis_positions;
+};
+
+struct MISModuleConfig
+{
+    /** Object type */
+    String object_type = "MIS module config";
+    
+    /** Arc angle */
+    double arc_angle = 0.0;
     
     /** Module angle */
-    double moduleAngle = 0.0;
+    double module_angle = 0.0;
     
     /** Rotation angle */
-    double rotationAngle = 0.0;
+    double rotation_angle = 0.0;
     
+    /** Angle unit */
+    String angle_unit = "degrees";
+    
+    /** Notes */
+    var notes; // can be null
 };
 
-struct Manipulator
+struct EphysAssemblyConfig
 {
-    /** Name */
-    String name;
+    /** Object type */
+    String object_type = "Ephys assembly config";
     
-    /** Coordinate system*/
-    CoordinateSystem coordinateSystem = MPM_MANIP_RFB;
+    /** Device name */
+    String device_name;
     
-    /** X position */
-    double xPosition = 0.0;
-    
-    /** Y position */
-    double yPosition = 0.0;
-    
-    /** Z position */
-    double zPosition = 0.0;
-    
-
-};
-
-struct EphysAssembly
-{
-    /** Assembly name */
-    String name;
-
     /** Manipulator */
-    Manipulator manipulator;
+    ManipulatorConfig manipulator;
     
-    /** Probe */
-    Probe probe;
+    /** Probes */
+    Array<ProbeConfig> probes;
     
-    /** MIS module */
-    MISModule misModule;
-
+    /** Modules */
+    Array<MISModuleConfig> modules;
 };
 
 struct DataStream
 {
-    /** Start time **/
+    /** Object type */
+    String object_type = "Data stream";
+    
+    /** Start time */
     Time stream_start_time;
     
     /** End time */
     Time stream_end_time;
     
+    /** Modalities */
+    Array<Modality> modalities;
+    
+    /** Code */
+    var code; // can be null
+    
+    /** Notes */
+    var notes; // can be null
+    
     /** Active devices */
-    StringArray activeDevices;
+    StringArray active_devices;
     
-    /** Ephys assemblies */
-    OwnedArray<EphysAssembly> ephysAssemblies;
+    /** Configurations */
+    Array<EphysAssemblyConfig> configurations;
     
+    /** Connections */
+    Array<var> connections; // Empty array in example
 };
 
 
@@ -175,18 +289,30 @@ struct Acquisition
     String notes;
 
     /** Coordinate system*/
-    CoordinateSystem coordinate_system;
+    CoordinateSystemObject coordinate_system;
+    
+    /** Calibrations */
+    Array<var> calibrations; // Empty array in example
+    
+    /** Maintenance */
+    Array<var> maintenance; // Empty array in example
     
     /** Data streams*/
-    OwnedArray<DataStream> data_streams;
+    Array<DataStream> data_streams;
+    
+    /** Stimulus epochs */
+    Array<var> stimulus_epochs; // Empty array in example
+    
+    /** Subject details */
+    SubjectDetails subject_details;
     
     /** Sets end time for all streams */
     void setEndTime (const Time& endTime)
     {
         this->acquisition_end_time = endTime;
-        for (auto* stream : data_streams)
+        for (Metadata::DataStream stream : data_streams)
         {
-            stream->stream_start_time = endTime;
+            stream.stream_start_time = endTime;
         }
     }
 
@@ -203,35 +329,7 @@ private:
      * @return var object containing all acquisition data
      */
     var toJSON() const;
-    
-    /**
-     * Convert a Probe struct to JSON
-     * @param probe The probe to convert
-     * @return var object containing probe data
-     */
-    static var probeToJSON(const Probe& probe);
-    
-    /**
-     * Convert a MISModule struct to JSON
-     * @param module The MIS module to convert
-     * @return var object containing module data
-     */
-    static var misModuleToJSON(const MISModule& module);
-    
-    /**
-     * Convert a Manipulator struct to JSON
-     * @param manipulator The manipulator to convert
-     * @return var object containing manipulator data
-     */
-    static var manipulatorToJSON(const Manipulator& manipulator);
-    
-    /**
-     * Convert an EphysAssembly struct to JSON
-     * @param assembly The assembly to convert
-     * @return var object containing assembly data
-     */
-    static var ephysAssemblyToJSON(const EphysAssembly& assembly);
-    
+
     /**
      * Convert a DataStream struct to JSON
      * @param stream The data stream to convert
@@ -245,6 +343,76 @@ private:
      * @return String representation of the coordinate system
      */
     static String coordinateSystemToString(CoordinateSystem system);
+    
+    /**
+     * Convert a CoordinateSystemObject struct to JSON
+     * @param coordSystem The coordinate system to convert
+     * @return var object containing coordinate system data
+     */
+    static var coordinateSystemObjectToJSON(const CoordinateSystemObject& coordSystem);
+    
+    /**
+     * Convert an Axis struct to JSON
+     * @param axis The axis to convert
+     * @return var object containing axis data
+     */
+    static var axisToJSON(const Axis& axis);
+    
+    /**
+     * Convert a SubjectDetails struct to JSON
+     * @param details The subject details to convert
+     * @return var object containing subject details data
+     */
+    static var subjectDetailsToJSON(const SubjectDetails& details);
+    
+    /**
+     * Convert a Translation struct to JSON
+     * @param translation The translation to convert
+     * @return var object containing translation data
+     */
+    static var translationToJSON(const Translation& translation);
+    
+    /**
+     * Convert a Rotation struct to JSON
+     * @param rotation The rotation to convert
+     * @return var object containing rotation data
+     */
+    static var rotationToJSON(const Rotation& rotation);
+    
+    /**
+     * Convert a Modality struct to JSON
+     * @param modality The modality to convert
+     * @return var object containing modality data
+     */
+    static var modalityToJSON(const Modality& modality);
+    
+    /**
+     * Convert a ProbeConfig struct to JSON
+     * @param probe The probe config to convert
+     * @return var object containing probe config data
+     */
+    static var probeConfigToJSON(const ProbeConfig& probe);
+    
+    /**
+     * Convert a ManipulatorConfig struct to JSON
+     * @param manipulator The manipulator config to convert
+     * @return var object containing manipulator config data
+     */
+    static var manipulatorConfigToJSON(const ManipulatorConfig& manipulator);
+    
+    /**
+     * Convert a MISModuleConfig struct to JSON
+     * @param module The MIS module config to convert
+     * @return var object containing MIS module config data
+     */
+    static var misModuleConfigToJSON(const MISModuleConfig& module);
+    
+    /**
+     * Convert an EphysAssemblyConfig struct to JSON
+     * @param assembly The ephys assembly config to convert
+     * @return var object containing ephys assembly config data
+     */
+    static var ephysAssemblyConfigToJSON(const EphysAssemblyConfig& assembly);
 };
 
 };

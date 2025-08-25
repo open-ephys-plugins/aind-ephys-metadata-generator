@@ -30,7 +30,7 @@ struct Region
 {
     String name;
     String acronym;
-    String ID;
+    String id;
 };
 
 class CCFRegionList
@@ -397,6 +397,62 @@ public:
             names.add(region.acronym);
         }
         return names;
+    }
+    
+    /** 
+     * Finds a region by its acronym or name
+     * @param identifier The acronym or name to search for
+     * @param searchByName If true, searches by name; if false, searches by acronym (default)
+     * @return Region struct if found, empty Region with "Unknown" values if not found
+     */
+    Region findRegion(const String& identifier, bool searchByName = false) const
+    {
+        if (identifier.isEmpty())
+        {
+            // Return empty region
+            return Region { "root", "root", "997" };
+        }
+        
+        for (const auto& region : regions)
+        {
+            if (searchByName)
+            {
+                if (region.name.equalsIgnoreCase(identifier))
+                {
+                    return region;
+                }
+            }
+            else
+            {
+                if (region.acronym.equalsIgnoreCase(identifier))
+                {
+                    return region;
+                }
+            }
+        }
+        
+        // If not found, return a default "root" region
+        return Region { "root", "root", "997" };
+    }
+    
+    /**
+     * Finds a region by acronym (convenience method)
+     * @param acronym The acronym to search for
+     * @return Region struct if found, empty Region with "Unknown" values if not found
+     */
+    Region findRegionByAcronym(const String& acronym) const
+    {
+        return findRegion(acronym, false);
+    }
+    
+    /**
+     * Finds a region by name (convenience method)
+     * @param name The name to search for
+     * @return Region struct if found, empty Region with "Unknown" values if not found
+     */
+    Region findRegionByName(const String& name) const
+    {
+        return findRegion(name, true);
     }
     
     Array<Region> regions;

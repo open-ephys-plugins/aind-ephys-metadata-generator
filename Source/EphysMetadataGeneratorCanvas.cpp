@@ -632,10 +632,12 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
             button->addListener(this);
         }
         
-        // Set the button appearance for delete action
+        // Set the button appearance for delete action - red X on transparent background
         button->setButtonText("X");
-        button->setColour(TextButton::buttonColourId, Colours::darkred);
-        button->setColour(TextButton::textColourOnId, Colours::white);
+        button->setColour(TextButton::buttonColourId, Colours::white.withAlpha(0.0f));
+        button->setColour(TextButton::textColourOnId, Colours::darkred);
+        button->setColour(TextButton::textColourOffId, Colours::darkred); // Ensure color persists
+        button->setColour(TextButton::buttonOnColourId, Colours::white.withAlpha(0.0f));
         
         // Make the button slightly smaller and centered
         button->setSize(40, 20);
@@ -1239,12 +1241,82 @@ void EphysMetadataGeneratorCanvas::updateStageListenerEndpoint()
 Metadata::Acquisition EphysMetadataGeneratorCanvas::getLatestMetadata()
 {
 
+    Time start_time = Time::getCurrentTime();
+
     Metadata::Acquisition acquisition;
 
     acquisition.subject_id = "Subject ID";
-    acquisition.acquisition_start_time = Time::getCurrentTime();
+    acquisition.acquisition_start_time = start_time;
 
+    acquisition.experimenters.add ("Default Experimenter");
+    acquisition.ethics_review_id.add ("2414");
+    acquisition.instrument_id = "323_EPHSY1";
     acquisition.acquisition_type = "Extracellular ephys experiment";
+    
+    acquisition.coordinate_system.name = "BREGMA_ARID";
+    acquisition.coordinate_system.origin = "Bregma";
+    acquisition.coordinate_system.axes.add (Metadata::Axis({"Axis", "AP", "Posterior_to_anterior"}));
+    acquisition.coordinate_system.axes.add (Metadata::Axis ({ "Axis", "ML", "Left_to_right" }));
+    acquisition.coordinate_system.axes.add (Metadata::Axis ({ "Axis", "SI", "Superior_to_inferior" }));
+    acquisition.coordinate_system.axes.add (Metadata::Axis ({ "Axis", "Depth", "Up_to_down" }));
+
+    acquisition.subject_details = Metadata::SubjectDetails();
+
+    Metadata::DataStream stream;
+    stream.stream_start_time = start_time;
+    stream.modalities.add (Metadata::Modality ({ "Extracellular electrophysiology", "ecephys" }));
+
+    for (int i = 0; i < probeMetadata.size(); ++i)
+    {
+
+        Metadata::ProbeConfig probeConfig;
+        Metadata::EphysAssemblyConfig ephysAssemblyConfig;
+        Metadata::MISModuleConfig misModuleConfig;
+        Metadata::ManipulatorConfig manipulatorConfig;
+
+        String device_name = "Ephys_assembly" + probeMetadata[i].probe;
+
+        stream.active_devices.add (device_name);
+        ephysAssemblyConfig.device_name = device_name;
+
+        manipulatorConfig.device_name = probeMetadata[i].manipulator;
+        manipulatorConfig.coordinate_system.name = "MPM_MANIP_RFB";
+        manipulatorConfig.coordinate_system.origin = "Tip";
+        manipulatorConfig.coordinate_system.axes.add (Metadata::Axis ({ "Axis", "X", "Left_to_right" }));
+        manipulatorConfig.coordinate_system.axes.add (Metadata::Axis ({ "Axis", "Y", "Back_to_front" }));
+        manipulatorConfig.coordinate_system.axes.add (Metadata::Axis ({ "Axis", "Z", "Up_to_down" }));
+        
+        manipulatorConfig.local_axis_positions.translation = { probeMetadata[i].x.getFloatValue(),
+                                                               probeMetadata[i].y.getFloatValue(),
+                                                               probeMetadata[i].z.getFloatValue() };
+
+
+        misModuleConfig.arc_angle = probeMetadata[i].arcAngle.getFloatValue();
+        misModuleConfig.module_angle = probeMetadata[i].moduleAngle.getFloatValue();
+        misModuleConfig.rotation_angle = probeMetadata[i].rotation.getFloatValue();
+
+        probeConfig.device_name = probeMetadata[i].probe;
+        
+        // Convert target structure string to Region struct using CCFRegionList
+        CCFRegionList regionList;
+        probeConfig.primary_targeted_structure = regionList.findRegionByAcronym(probeMetadata[i].targetStructure);
+        
+        probeConfig.coordinate_system.name = "MPM_MANIP_RFB";
+        probeConfig.coordinate_system.origin = "Tip";
+        probeConfig.coordinate_system.axes.add (Metadata::Axis ({ "Axis", "X", "Left_to_right" }));
+        probeConfig.coordinate_system.axes.add (Metadata::Axis ({ "Axis", "Y", "Back_to_front" }));
+        probeConfig.coordinate_system.axes.add (Metadata::Axis ({ "Axis", "Z", "Up_to_down" }));
+        probeConfig.dye = probeMetadata[i].dye;
+        probeConfig.notes = probeMetadata[i].notes;
+        
+        ephysAssemblyConfig.modules.add (misModuleConfig);
+        ephysAssemblyConfig.manipulator = manipulatorConfig;
+        ephysAssemblyConfig.probes.add (probeConfig);
+
+        stream.configurations.add (ephysAssemblyConfig);
+    }
+
+    acquisition.data_streams.add (stream);
 
     return acquisition;
 
