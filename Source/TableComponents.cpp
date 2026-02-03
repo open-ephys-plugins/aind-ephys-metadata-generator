@@ -28,7 +28,8 @@ NotesEditorPopup::NotesEditorPopup(const String& initialText, std::function<void
     : onTextChangedCallback(onTextChanged)
 {
     textEditor = std::make_unique<TextEditor>();
-    textEditor->setMultiLine(true);
+    textEditor->setMultiLine(true, false);
+    textEditor->setScrollBarThickness (10);
     textEditor->setReturnKeyStartsNewLine(false);
     textEditor->setText(initialText);
     textEditor->addListener(this);
@@ -44,13 +45,13 @@ NotesEditorPopup::~NotesEditorPopup()
 
 void NotesEditorPopup::paint(Graphics& g)
 {
-    g.fillAll(getLookAndFeel().findColour(ResizableWindow::backgroundColourId));
-    g.setColour(Colours::black);
+    g.fillAll(getLookAndFeel().findColour(ThemeColours::componentParentBackground));
+    g.setColour(findColour(ThemeColours::outline));
     g.drawRect(getLocalBounds(), 2);
     
     // Draw title
-    g.setColour(getLookAndFeel().findColour(Label::textColourId));
-    g.setFont(14.0f);
+    g.setColour(getLookAndFeel().findColour(ThemeColours::controlPanelText));
+    g.setFont(FontOptions ("Inter", "Semi Bold", 15.0f));
     g.drawText("Edit Notes (Press Enter to save)", 5, 5, getWidth() - 10, 20, Justification::centred);
 }
 
@@ -103,9 +104,10 @@ AutoCompleteSuggestionList::AutoCompleteSuggestionList(const StringArray& sugges
     listBox = std::make_unique<ListBox>();
     listBox->setModel(this);
     listBox->setRowHeight(20);
+    listBox->setMouseMoveSelectsRows (true);
     listBox->setOutlineThickness(1);
-    listBox->setColour(ListBox::outlineColourId, Colours::black);
-    listBox->setColour(ListBox::backgroundColourId, Colours::white);
+    listBox->setColour(ListBox::outlineColourId, findColour(ThemeColours::outline));
+    listBox->setColour(ListBox::backgroundColourId, findColour(ThemeColours::menuBackground));
     addAndMakeVisible(listBox.get());
     
     setSize(200, jmin(100, suggestions.size() * 20 + 2));
@@ -113,14 +115,6 @@ AutoCompleteSuggestionList::AutoCompleteSuggestionList(const StringArray& sugges
 
 AutoCompleteSuggestionList::~AutoCompleteSuggestionList()
 {
-}
-
-void AutoCompleteSuggestionList::paint(Graphics& g)
-{
-    g.setColour(Colours::white);
-    g.fillRect(getLocalBounds());
-    g.setColour(Colours::black);
-    g.drawRect(getLocalBounds(), 1);
 }
 
 void AutoCompleteSuggestionList::resized()
@@ -168,11 +162,11 @@ void AutoCompleteSuggestionList::paintListBoxItem(int rowNumber, Graphics& g, in
 {
     if (rowIsSelected)
     {
-        g.setColour(Colour(0x3f7fbfff));
+        g.setColour(findColour(ThemeColours::menuHighlightBackground));
         g.fillRect(0, 0, width, height);
     }
     
-    g.setColour(findColour(ThemeColours::defaultText));
+    g.setColour(findColour(rowIsSelected ? ThemeColours::menuHighlightText : ThemeColours::defaultText));
     g.setFont(14.0f);
     
     if (rowNumber < filteredSuggestions.size())
@@ -311,13 +305,10 @@ void AutoCompleteTextEditor::setSuggestions(const StringArray& newSuggestions)
 void AutoCompleteTextEditor::updateColours()
 {
     // Update the TextEditor colors to match the current theme
+    applyColourToAllText (findColour(ThemeColours::defaultText));
+
     setColour(TextEditor::backgroundColourId, Colours::white.withAlpha(0.0f));
-    setColour(TextEditor::textColourId, findColour(ThemeColours::defaultText));
-    setColour(TextEditor::highlightColourId, Colours::lightblue.withAlpha(0.5f));
-    setColour(TextEditor::highlightedTextColourId, Colours::black);
-    setColour(TextEditor::outlineColourId, Colours::white.withAlpha(0.0f));
-    setColour(TextEditor::focusedOutlineColourId, Colours::white.withAlpha(0.0f));
-    
+
     // Repaint to apply the new colors
     repaint();
 }

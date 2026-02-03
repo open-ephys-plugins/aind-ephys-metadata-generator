@@ -47,46 +47,63 @@ EphysMetadataGeneratorCanvas::EphysMetadataGeneratorCanvas(EphysMetadataGenerato
     
     // Create and configure the server address components
     serverAddressLabel = std::make_unique<Label>("Server Address Label", "HTTP Server:");
+    serverAddressLabel->setFont (FontOptions ("Inter", "Semi Bold", 16.0f));
     serverAddressLabel->setJustificationType(Justification::centredLeft);
-    serverAddressLabel->setColour(Label::textColourId, findColour(ThemeColours::defaultText));
+    serverAddressLabel->setColour(Label::textColourId, findColour(ThemeColours::controlPanelText));
     addAndMakeVisible(serverAddressLabel.get());
     
     serverAddressEditor = std::make_unique<TextEditor>("Server Address");
     serverAddressEditor->setText("10.128.49.150:8080", false);
     serverAddressEditor->setJustification(Justification::centred);
-    serverAddressEditor->setColour(TextEditor::backgroundColourId, Colours::white);
-    serverAddressEditor->setColour(TextEditor::textColourId, Colours::black);
-    serverAddressEditor->setColour(TextEditor::outlineColourId, Colours::grey);
+    serverAddressEditor->setInputRestrictions (0, "0123456789.:");
+    serverAddressEditor->onTextChange = [this]()
+    {
+        if (connectButton != nullptr)
+        {
+            connectButton->setButtonText("Connect");
+            connectButton->setColour(TextButton::buttonColourId, findColour (ThemeColours::widgetBackground));
+            connectButton->setColour(TextButton::textColourOnId, findColour (ThemeColours::defaultText));
+            connectButton->setColour(TextButton::textColourOffId, findColour (ThemeColours::defaultText));
+        }
+    };
+
     addAndMakeVisible(serverAddressEditor.get());
     
     connectButton = std::make_unique<TextButton>("Connect");
     connectButton->setName("ConnectButton");
     connectButton->addListener(this);
-    connectButton->setColour(TextButton::buttonColourId, Colours::lightblue);
-    connectButton->setColour(TextButton::textColourOnId, Colours::black);
+    connectButton->setColour(TextButton::buttonColourId, findColour (ThemeColours::widgetBackground));
+    connectButton->setColour(TextButton::textColourOnId, findColour (ThemeColours::defaultText));
+    connectButton->setColour(TextButton::textColourOffId, findColour (ThemeColours::defaultText));
     addAndMakeVisible(connectButton.get());
     
     // Add columns to the table
-    metadataTable->getHeader().addColumn("Probe", 1, 80);
-    metadataTable->getHeader().addColumn("Manipulator", 2, 100);
-    metadataTable->getHeader().addColumn("Arc Angle", 3, 80);
-    metadataTable->getHeader().addColumn("Module Angle", 4, 100);
-    metadataTable->getHeader().addColumn("Rotation", 5, 80);
-    metadataTable->getHeader().addColumn("X", 6, 60);
-    metadataTable->getHeader().addColumn("Y", 7, 60);
-    metadataTable->getHeader().addColumn("Z", 8, 60);
-    metadataTable->getHeader().addColumn("Surface", 9, 80);
-    metadataTable->getHeader().addColumn("Target Structure", 10, 220);
-    metadataTable->getHeader().addColumn("Dye", 11, 80);
-    metadataTable->getHeader().addColumn("Notes", 12, 150);
-    metadataTable->getHeader().addColumn("Delete", 13, 60);
-    
+    metadataTable->getHeader().addColumn("Probe", 1, 80, 80, 300, TableHeaderComponent::notSortable);
+    metadataTable->getHeader().addColumn("Manipulator", 2, 100, 100, 300, TableHeaderComponent::notSortable);
+    metadataTable->getHeader().addColumn("Arc Angle", 3, 80, 80, 80, TableHeaderComponent::notResizableOrSortable);
+    metadataTable->getHeader().addColumn("Module Angle", 4, 100, 100, 100, TableHeaderComponent::notResizableOrSortable);
+    metadataTable->getHeader().addColumn("Rotation", 5, 80, 80, 80, TableHeaderComponent::notResizableOrSortable);
+    metadataTable->getHeader().addColumn("X", 6, 60, 60, 60, TableHeaderComponent::notResizableOrSortable);
+    metadataTable->getHeader().addColumn("Y", 7, 60, 60, 60, TableHeaderComponent::notResizableOrSortable);
+    metadataTable->getHeader().addColumn("Z", 8, 60, 60, 60, TableHeaderComponent::notResizableOrSortable);
+    metadataTable->getHeader().addColumn("Surface", 9, 80, 80, 80, TableHeaderComponent::notResizableOrSortable);
+    metadataTable->getHeader().addColumn("Target Structure", 10, 150, 150, 150, TableHeaderComponent::notResizableOrSortable);
+    metadataTable->getHeader().addColumn("Dye", 11, 80, 80, 80, TableHeaderComponent::notResizableOrSortable);
+    metadataTable->getHeader().addColumn("Notes", 12, 150, 100, 400, TableHeaderComponent::notSortable);
+    metadataTable->getHeader().addColumn("Delete", 13, 40, 40, 40, TableHeaderComponent::notResizableOrSortable);
+    metadataTable->getHeader().setPopupMenuActive (false);
+
     // Create some initial values
     initializeTable();
     
     // Create and start the stage listener
     stageListener = std::make_unique<StageListener>(this);
     stageListener->startListening();
+
+    connectButton->setButtonText("Connecting...");
+    connectButton->setColour(TextButton::buttonColourId, Colours::lightgreen);
+    connectButton->setColour(TextButton::textColourOnId, Colours::black);
+    connectButton->setColour(TextButton::textColourOffId, Colours::black);
 }
 
 
@@ -114,7 +131,7 @@ void EphysMetadataGeneratorCanvas::resized()
         int bottomY = margin + tableHeight + margin;
         
         // Server address controls dimensions
-        int labelWidth = 80;
+        int labelWidth = 100;
         int editorWidth = 200;
         int connectButtonWidth = 200;
         int addButtonWidth = 200;
@@ -168,14 +185,19 @@ void EphysMetadataGeneratorCanvas::lookAndFeelChanged()
     // Update colors for components that use theme colors
     if (serverAddressLabel != nullptr)
     {
-        serverAddressLabel->setColour(Label::textColourId, findColour(ThemeColours::defaultText));
+        serverAddressLabel->setColour(Label::textColourId, findColour(ThemeColours::controlPanelText));
     }
     
     if (serverAddressEditor != nullptr)
     {
-        serverAddressEditor->setColour(TextEditor::backgroundColourId, Colours::white);
-        serverAddressEditor->setColour(TextEditor::textColourId, Colours::black);
-        serverAddressEditor->setColour(TextEditor::outlineColourId, Colours::grey);
+        serverAddressEditor->applyColourToAllText (findColour (ThemeColours::defaultText));
+    }
+
+    if (connectButton != nullptr && connectButton->getButtonText() == "Connect")
+    {
+        connectButton->setColour(TextButton::buttonColourId, findColour (ThemeColours::widgetBackground));
+        connectButton->setColour(TextButton::textColourOnId, findColour (ThemeColours::defaultText));
+        connectButton->setColour(TextButton::textColourOffId, findColour (ThemeColours::defaultText));
     }
     
     // Force table to update its components by refreshing the content
@@ -200,7 +222,7 @@ void EphysMetadataGeneratorCanvas::updateSettings()
 
 void EphysMetadataGeneratorCanvas::paint(Graphics& g)
 {
-    g.fillAll(getLookAndFeel().findColour (ThemeColours::windowBackground));
+    g.fillAll(getLookAndFeel().findColour (ThemeColours::componentParentBackground));
 }
 
 // TableListBoxModel methods
@@ -481,8 +503,8 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
                 {
                     button->setButtonText(currentSurface);
                 }
-                button->setColour(TextButton::buttonColourId, Colours::lightgrey);
-                button->setColour(TextButton::textColourOnId, Colours::black);
+                button->setColour(TextButton::buttonColourId, findColour (ThemeColours::widgetBackground));
+                button->setColour(TextButton::textColourOnId, findColour (ThemeColours::defaultText));
             }
         }
         
@@ -634,10 +656,8 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
         
         // Set the button appearance for delete action - red X on transparent background
         button->setButtonText("X");
-        button->setColour(TextButton::buttonColourId, Colours::white.withAlpha(0.0f));
-        button->setColour(TextButton::textColourOnId, Colours::darkred);
-        button->setColour(TextButton::textColourOffId, Colours::darkred); // Ensure color persists
-        button->setColour(TextButton::buttonOnColourId, Colours::white.withAlpha(0.0f));
+        button->setColour(TextButton::textColourOnId, Colours::red.withAlpha(0.8f));
+        button->setColour(TextButton::textColourOffId, Colours::red.withAlpha(0.8f)); // Ensure color persists
         
         // Make the button slightly smaller and centered
         button->setSize(40, 20);
@@ -774,8 +794,8 @@ void EphysMetadataGeneratorCanvas::buttonClicked(Button* buttonThatWasClicked)
                 
                 // Update button appearance to inactive state
                 surfaceButton->setButtonText("Set Surface");
-                surfaceButton->setColour(TextButton::buttonColourId, Colours::lightgrey);
-                surfaceButton->setColour(TextButton::textColourOnId, Colours::black);
+                surfaceButton->setColour(TextButton::buttonColourId, findColour (ThemeColours::widgetBackground));
+                surfaceButton->setColour(TextButton::textColourOnId, findColour (ThemeColours::defaultText));
                 
                 LOGD("Surface for row ", rowNumber, " cleared (reverted to inactive)");
             }
@@ -916,7 +936,16 @@ void EphysMetadataGeneratorCanvas::buttonClicked(Button* buttonThatWasClicked)
 void EphysMetadataGeneratorCanvas::stagePositionsUpdated(const Array<StagePosition>& positions)
 {
     LOGD("Received ", positions.size(), " stage positions from HTTP endpoint");
-    
+
+    if (connectButton != nullptr && connectButton->getButtonText() == "Connecting...")
+    {
+        // Indicate successful connection on the Connect button
+        connectButton->setButtonText("Connected");
+        connectButton->setColour(TextButton::buttonColourId, Colours::green);
+        connectButton->setColour(TextButton::textColourOnId, Colours::black);
+        connectButton->setColour(TextButton::textColourOffId, Colours::black);
+    }
+
     // Store the available serial numbers in the global array (merge with existing)
     for (const auto& stagePos : positions)
     {
@@ -1014,8 +1043,14 @@ void EphysMetadataGeneratorCanvas::stagePositionError(const String& errorMessage
 {
     LOGE("Stage position fetch error: ", errorMessage);
     
-    // You could show an error message to the user here, for example:
-    // AlertWindow::showMessageBox(AlertWindow::WarningIcon, "Stage Position Error", errorMessage);
+    if (connectButton != nullptr && connectButton->getButtonText() != "Connect")
+    {
+        // Indicate error state on the Connect button
+        connectButton->setButtonText("Error");
+        connectButton->setColour(TextButton::buttonColourId, Colours::darkred);
+        connectButton->setColour(TextButton::textColourOnId, Colours::white);
+        connectButton->setColour(TextButton::textColourOffId, Colours::white);
+    }
 }
 
 // XML serialization methods
@@ -1138,6 +1173,7 @@ void EphysMetadataGeneratorCanvas::loadCustomParametersFromXml(XmlElement* xml)
         String savedServerAddress = xml->getStringAttribute("serverAddress", "10.128.49.150:8080");
         serverAddressEditor->setText(savedServerAddress, false);
         LOGD("Loaded server address: ", savedServerAddress);
+        updateStageListenerEndpoint();
     }
     
     // Update the table to reflect the loaded data
@@ -1213,28 +1249,21 @@ void EphysMetadataGeneratorCanvas::updateStageListenerEndpoint()
     {
         stageListener->startListening();
         LOGD("Restarted stage listener with new endpoint");
-        
-        // Update the connect button to show it's connected
-        if (connectButton != nullptr)
-        {
-            connectButton->setButtonText("Connected");
-            connectButton->setColour(TextButton::buttonColourId, Colours::green);
-            connectButton->setColour(TextButton::textColourOnId, Colours::white);
-        }
     }
     else
     {
         // Start listening with the new endpoint
         stageListener->startListening();
         LOGD("Started stage listener with new endpoint: ", newEndpoint);
-        
-        // Update the connect button to show it's connected
-        if (connectButton != nullptr)
-        {
-            connectButton->setButtonText("Connected");
-            connectButton->setColour(TextButton::buttonColourId, Colours::green);
-            connectButton->setColour(TextButton::textColourOnId, Colours::white);
-        }
+    }
+
+    // Update the connect button to show it's connecting
+    if (connectButton != nullptr)
+    {
+        connectButton->setButtonText("Connecting...");
+        connectButton->setColour(TextButton::buttonColourId, Colours::lightgreen);
+        connectButton->setColour(TextButton::textColourOnId, Colours::black);
+        connectButton->setColour(TextButton::textColourOffId, Colours::black);
     }
 }
 

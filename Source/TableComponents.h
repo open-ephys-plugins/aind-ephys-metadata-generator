@@ -35,8 +35,7 @@ class AutoCompleteSuggestionList : public Component,
 public:
     AutoCompleteSuggestionList(const StringArray& suggestions, std::function<void(const String&)> onSelection);
     ~AutoCompleteSuggestionList();
-    
-    void paint(Graphics& g) override;
+
     void resized() override;
     
     // Mouse handling to prevent focus loss
