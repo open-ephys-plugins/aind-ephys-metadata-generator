@@ -37,13 +37,7 @@ EphysMetadataGeneratorCanvas::EphysMetadataGeneratorCanvas(EphysMetadataGenerato
     metadataTable->setOutlineThickness(1);
     addAndMakeVisible(metadataTable.get());
     
-    // Create and configure the Add Row button
-    addRowButton = std::make_unique<TextButton>("Add Row");
-    addRowButton->setName("AddRowButton");
-    addRowButton->addListener(this);
-    addRowButton->setColour(TextButton::buttonColourId, Colours::lightgreen);
-    addRowButton->setColour(TextButton::textColourOnId, Colours::black);
-    addAndMakeVisible(addRowButton.get());
+    // (Add Row button removed)
     
     // Create and configure the server address components
     serverAddressLabel = std::make_unique<Label>("Server Address Label", "HTTP Server:");
@@ -90,7 +84,12 @@ EphysMetadataGeneratorCanvas::EphysMetadataGeneratorCanvas(EphysMetadataGenerato
     metadataTable->getHeader().addColumn("Target Structure", 10, 150, 150, 150, TableHeaderComponent::notResizableOrSortable);
     metadataTable->getHeader().addColumn("Dye", 11, 80, 80, 80, TableHeaderComponent::notResizableOrSortable);
     metadataTable->getHeader().addColumn("Notes", 12, 150, 100, 400, TableHeaderComponent::notSortable);
-    metadataTable->getHeader().addColumn("Delete", 13, 40, 40, 40, TableHeaderComponent::notResizableOrSortable);
+    metadataTable->getHeader().addColumn("Hemisphere", 13, 80, 80, 80, TableHeaderComponent::notResizableOrSortable);
+    metadataTable->getHeader().addColumn("Implant Hole #", 14, 90, 90, 90, TableHeaderComponent::notResizableOrSortable);
+    metadataTable->getHeader().addColumn("Inserted?", 15, 70, 70, 70, TableHeaderComponent::notResizableOrSortable);
+    metadataTable->getHeader().addColumn("On Target?", 16, 80, 80, 80, TableHeaderComponent::notResizableOrSortable);
+    metadataTable->getHeader().addColumn("Recorded?", 17, 80, 80, 80, TableHeaderComponent::notResizableOrSortable);
+    metadataTable->getHeader().addColumn("Delete", 18, 50, 50, 50, TableHeaderComponent::notResizableOrSortable);
     metadataTable->getHeader().setPopupMenuActive (false);
 
     // Create some initial values
@@ -117,62 +116,29 @@ void EphysMetadataGeneratorCanvas::resized()
 {
     const int buttonHeight = 30;
     const int margin = 10;
-    const int bottomControlsHeight = 40; // Height for bottom controls (Add Row + Server)
-    
-    if (metadataTable != nullptr && addRowButton != nullptr)
+    const int bottomControlsHeight = 40; // Height reserved for server controls
+
+    if (metadataTable != nullptr)
     {
         // Calculate available space for table (leave room for bottom controls)
-        int tableHeight = getHeight() - (bottomControlsHeight + 2 * margin + margin); // Extra margin for spacing
-        
+        int tableHeight = getHeight() - (bottomControlsHeight + 2 * margin);
+
         // Position the table at the top
         metadataTable->setBounds(margin, margin, getWidth() - 2 * margin, tableHeight);
-        
-        // Position controls at the bottom
-        int bottomY = margin + tableHeight + margin;
-        
-        // Server address controls dimensions
-        int labelWidth = 100;
-        int editorWidth = 200;
-        int connectButtonWidth = 200;
-        int addButtonWidth = 200;
-        
-        // Calculate total width needed for all bottom controls
-        int totalBottomControlsWidth = labelWidth + editorWidth + connectButtonWidth + addButtonWidth + 4 * margin;
-        
-        // Center all bottom controls horizontally
-        int startX = (getWidth() - totalBottomControlsWidth) / 2;
-        
-        // Position server address controls on the left side of bottom area
-        if (serverAddressLabel != nullptr && serverAddressEditor != nullptr && connectButton != nullptr)
-        {
-            serverAddressLabel->setBounds(startX, bottomY, labelWidth, buttonHeight);
-            serverAddressEditor->setBounds(startX + labelWidth + margin, bottomY, editorWidth, buttonHeight);
-            connectButton->setBounds(startX + labelWidth + editorWidth + 2 * margin, bottomY, connectButtonWidth, buttonHeight);
-        }
-        
-        // Position the Add Row button on the right side of bottom area
-        int addButtonX = startX + labelWidth + editorWidth + connectButtonWidth + 3 * margin;
-        addRowButton->setBounds(addButtonX, bottomY, addButtonWidth, buttonHeight);
-    }
-    else if (metadataTable != nullptr)
-    {
-        // If no add button, use most of height for table, but leave room for server controls
-        int tableHeight = getHeight() - (bottomControlsHeight + 2 * margin);
-        metadataTable->setBounds(margin, margin, getWidth() - 2 * margin, tableHeight);
-        
+
         // Position server controls at bottom center
         if (serverAddressLabel != nullptr && serverAddressEditor != nullptr && connectButton != nullptr)
         {
-            int labelWidth = 80;
-            int editorWidth = 150;
-            int connectButtonWidth = 80;
+            int labelWidth = 100;
+            int editorWidth = 200;
+            int connectButtonWidth = 200;
             int totalServerControlsWidth = labelWidth + editorWidth + connectButtonWidth + 2 * margin;
-            int serverX = (getWidth() - totalServerControlsWidth) / 2;
+            int startX = (getWidth() - totalServerControlsWidth) / 2;
             int bottomY = margin + tableHeight + margin;
-            
-            serverAddressLabel->setBounds(serverX, bottomY, labelWidth, buttonHeight);
-            serverAddressEditor->setBounds(serverX + labelWidth + margin, bottomY, editorWidth, buttonHeight);
-            connectButton->setBounds(serverX + labelWidth + editorWidth + 2 * margin, bottomY, connectButtonWidth, buttonHeight);
+
+            serverAddressLabel->setBounds(startX, bottomY, labelWidth, buttonHeight);
+            serverAddressEditor->setBounds(startX + labelWidth + margin, bottomY, editorWidth, buttonHeight);
+            connectButton->setBounds(startX + labelWidth + editorWidth + 2 * margin, bottomY, connectButtonWidth, buttonHeight);
         }
     }
 }
@@ -215,8 +181,92 @@ void EphysMetadataGeneratorCanvas::lookAndFeelChanged()
 
 void EphysMetadataGeneratorCanvas::updateSettings()
 {
+    // Get all data streams from the processor
+    Array<const DataStream*> dataStreams = processor->getDataStreams();
     
+    // Track which existing probes match current streams
+    Array<String> foundProbeNames;
     
+    // Iterate through all data streams and identify Neuropixels probes
+    for (auto stream : dataStreams)
+    {
+        String deviceName = "Unknown Device";
+        bool isNeuropixels = false;
+        
+        if (stream->device != nullptr)
+        {
+            // Check for neuropixels.adcs metadata to identify Neuropixels probes
+            int adcMetadataIndex = stream->device->findMetadata(
+                MetadataDescriptor::MetadataType::UINT16,
+                1,
+                "neuropixels.adcs");
+            
+            if (adcMetadataIndex > -1)
+            {
+                // This is a Neuropixels device
+                isNeuropixels = true;
+                deviceName = stream->device->getName();
+                foundProbeNames.add(deviceName);
+                
+                LOGD("Found Neuropixels device: ", deviceName);
+                
+                // Check if this probe already exists in our metadata
+                bool probeExists = false;
+                for (int i = 0; i < probeMetadata.size(); ++i)
+                {
+                    if (probeMetadata[i].probe == deviceName)
+                    {
+                        probeExists = true;
+                        LOGD("Probe ", deviceName, " already exists in metadata");
+                        break;
+                    }
+                }
+                
+                // If probe doesn't exist, add it with default values
+                if (!probeExists)
+                {
+                    ProbeMetadata newProbe;
+                    newProbe.probe = deviceName;
+                    newProbe.manipulator = ""; // Will be set by user/stage server
+                    newProbe.arcAngle = "0";
+                    newProbe.moduleAngle = "0";
+                    newProbe.rotation = "0";
+                    newProbe.x = "0.0";
+                    newProbe.y = "0.0";
+                    newProbe.z = "0.0";
+                    newProbe.surface = "0.0";
+                    newProbe.targetStructure = "";
+                    newProbe.dye = "CM-DiI";
+                    newProbe.notes = "";
+                    newProbe.hemisphere = "";
+                    newProbe.implantHoleNumber = "";
+                    newProbe.inserted = true;
+                    newProbe.onTarget = true;
+                    newProbe.recorded = true;
+                    
+                    probeMetadata.add(newProbe);
+                    LOGD("Added new probe: ", deviceName, " (total probes: ", probeMetadata.size(), ")");
+                }
+            }
+        }
+    }
+    
+    // Remove probes that are no longer present in the data streams
+    for (int i = probeMetadata.size() - 1; i >= 0; --i)
+    {
+        if (!foundProbeNames.contains(probeMetadata[i].probe))
+        {
+            LOGD("Removing probe that is no longer in stream: ", probeMetadata[i].probe);
+            probeMetadata.remove(i);
+        }
+    }
+    
+    // Update the table to reflect changes
+    if (metadataTable != nullptr)
+    {
+        metadataTable->updateContent();
+        metadataTable->repaint();
+    }
 }
 
 
@@ -246,8 +296,8 @@ void EphysMetadataGeneratorCanvas::paintCell(Graphics& g, int rowNumber, int col
     
     if (rowNumber < probeMetadata.size())
     {
-        // Do not draw text for Surface, Dye, Notes, and Delete columns, handled by buttons
-        if (columnId == 9 || columnId == 10 || columnId == 11 || columnId == 12 || columnId == 13)
+        // Do not draw text for Surface, Dye, Notes, Hemisphere, Hole #, checkboxes, and Delete columns
+        if (columnId == 9 || columnId == 10 || columnId == 11 || columnId == 12 || columnId == 13 || columnId == 14 || columnId == 15 || columnId == 16 || columnId == 17 || columnId == 18)
             return;
         String text;
         const ProbeMetadata& row = probeMetadata[rowNumber];
@@ -269,55 +319,9 @@ void EphysMetadataGeneratorCanvas::paintCell(Graphics& g, int rowNumber, int col
 
 void EphysMetadataGeneratorCanvas::initializeTable()
 {
-    
-    
-    // Add some sample data
-    ProbeMetadata sample1;
-    sample1.probe = "Probe A";
-    sample1.manipulator = "Manipulator 1";
-    sample1.arcAngle = "45";
-    sample1.moduleAngle = "30";
-    sample1.rotation = "0";
-    sample1.x = "1.5";
-    sample1.y = "2.0";
-    sample1.z = "3.5";
-    sample1.surface = "0.0";
-    sample1.targetStructure = "";
-    sample1.dye = "CM-DiI";
-    sample1.notes = "";
-    
-    ProbeMetadata sample2;
-    sample2.probe = "Probe B";
-    sample2.manipulator = "Manipulator 2";
-    sample2.arcAngle = "60";
-    sample2.moduleAngle = "45";
-    sample2.rotation = "90";
-    sample2.x = "2.0";
-    sample2.y = "1.5";
-    sample2.z = "4.0";
-    sample2.surface = "0.0";
-    sample2.targetStructure = "";
-    sample2.dye = "CM-DiI";
-    sample2.notes = "";
-    
-    ProbeMetadata sample3;
-    sample3.probe = "Probe C";
-    sample3.manipulator = "Manipulator 3";
-    sample3.arcAngle = "60";
-    sample3.moduleAngle = "45";
-    sample3.rotation = "90";
-    sample3.x = "2.0";
-    sample3.y = "1.5";
-    sample3.z = "900.0";
-    sample3.surface = "0.0";
-    sample3.targetStructure = "";
-    sample3.dye = "CM-DiI";
-    sample3.notes = "";
-    
-    probeMetadata.add(sample1);
-    probeMetadata.add(sample2);
-    probeMetadata.add(sample3);
-    
+    // Table will be populated automatically via updateSettings() when data streams are available
+    // Start with an empty table
+    probeMetadata.clear();
     metadataTable->updateContent();
 }
 
@@ -404,9 +408,6 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
             label = new Label();
             label->setEditable(true);
             label->setJustificationType(Justification::centred);
-            label->setColour(Label::backgroundColourId, Colours::white.withAlpha(0.0f));
-            label->setColour(Label::textColourId, findColour(ThemeColours::defaultText));
-            label->setColour(Label::outlineColourId, Colours::white.withAlpha(0.0f));
             
             // Set name to identify which column this label belongs to
             if (columnId == 3) label->setName("ArcAngle_" + String(rowNumber));
@@ -444,10 +445,6 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
                     LOGD("Angle value for row ", rowNumber, " column ", columnId, " changed to: ", newText);
                 }
             };
-        }
-        else
-        {
-            label->setColour (Label::textColourId, findColour (ThemeColours::defaultText));
         }
         
         // Set the current text based on the data
@@ -642,8 +639,189 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
         return button;
     }
     
-    // Button for the Delete column (column 13)
+    // Button for the Hemisphere column (column 13)
     if (columnId == 13)
+    {
+        TextButton* button = dynamic_cast<TextButton*>(existingComponentToUpdate);
+        
+        if (button == nullptr)
+        {
+            button = new TextButton();
+            button->setName("HemisphereButton_" + String(rowNumber));
+            button->addListener(this);
+        }
+        
+        // Set button text and color based on current hemisphere value
+        if (rowNumber < probeMetadata.size())
+        {
+            String currentHemisphere = probeMetadata[rowNumber].hemisphere;
+            if (currentHemisphere == "L")
+            {
+                button->setButtonText("L");
+                button->setColour(TextButton::buttonColourId, Colours::lightblue);
+                button->setColour(TextButton::textColourOnId, Colours::black);
+            }
+            else if (currentHemisphere == "R")
+            {
+                button->setButtonText("R");
+                button->setColour(TextButton::buttonColourId, Colours::lightcoral);
+                button->setColour(TextButton::textColourOnId, Colours::black);
+            }
+            else
+            {
+                button->setButtonText("None");
+                button->setColour(TextButton::buttonColourId, findColour(ThemeColours::widgetBackground));
+                button->setColour(TextButton::textColourOnId, findColour(ThemeColours::defaultText));
+            }
+        }
+        
+        return button;
+    }
+    
+    // Label for the Implant Hole Number column (column 14)
+    if (columnId == 14)
+    {
+        Label* label = dynamic_cast<Label*>(existingComponentToUpdate);
+        
+        if (label == nullptr)
+        {
+            label = new Label();
+            label->setEditable(true);
+            label->setJustificationType(Justification::centred);
+            label->setColour(Label::outlineColourId, findColour(ThemeColours::outline));
+            label->setName("ImplantHole_" + String(rowNumber));
+
+            label->onEditorShow = [this, label]()
+            {
+                if (label != nullptr)
+                {
+                    label->getCurrentTextEditor()->setInputRestrictions(3, "0123456789");
+                }
+            };
+            
+            label->onTextChange = [this, label, rowNumber]()
+            {
+                String newText = label->getText();
+                
+                // Validate numeric input 0-100
+                if (!newText.isEmpty())
+                {
+                    int value = newText.getIntValue();
+                    if (value < 0 || value > 100 || !newText.containsOnly("0123456789"))
+                    {
+                        // Revert to previous value
+                        if (rowNumber < probeMetadata.size())
+                        {
+                            label->setText(probeMetadata[rowNumber].implantHoleNumber, dontSendNotification);
+                            return;
+                        }
+                    }
+                }
+                
+                // Update the data
+                if (rowNumber < probeMetadata.size())
+                {
+                    probeMetadata.getReference(rowNumber).implantHoleNumber = newText;
+                    LOGD("Implant hole for row ", rowNumber, " changed to: ", newText);
+                }
+            };
+        }
+        
+        // Set current text
+        if (rowNumber < probeMetadata.size())
+        {
+            label->setText(probeMetadata[rowNumber].implantHoleNumber, dontSendNotification);
+        }
+        
+        return label;
+    }
+    
+    // Checkbox for Inserted column (column 15)
+    if (columnId == 15)
+    {
+        ToggleButton* checkbox = dynamic_cast<ToggleButton*>(existingComponentToUpdate);
+        
+        if (checkbox == nullptr)
+        {
+            checkbox = new ToggleButton();
+            checkbox->setName("InsertedCheckbox_" + String(rowNumber));
+            checkbox->onClick = [this, checkbox, rowNumber]()
+            {
+                if (rowNumber < probeMetadata.size())
+                {
+                    probeMetadata.getReference(rowNumber).inserted = checkbox->getToggleState();
+                    LOGD("Inserted for row ", rowNumber, " changed to: ", checkbox->getToggleState());
+                }
+            };
+        }
+        
+        // Set current state
+        if (rowNumber < probeMetadata.size())
+        {
+            checkbox->setToggleState(probeMetadata[rowNumber].inserted, dontSendNotification);
+        }
+        
+        return checkbox;
+    }
+    
+    // Checkbox for On Target column (column 16)
+    if (columnId == 16)
+    {
+        ToggleButton* checkbox = dynamic_cast<ToggleButton*>(existingComponentToUpdate);
+        
+        if (checkbox == nullptr)
+        {
+            checkbox = new ToggleButton();
+            checkbox->setName("OnTargetCheckbox_" + String(rowNumber));
+            checkbox->onClick = [this, checkbox, rowNumber]()
+            {
+                if (rowNumber < probeMetadata.size())
+                {
+                    probeMetadata.getReference(rowNumber).onTarget = checkbox->getToggleState();
+                    LOGD("On Target for row ", rowNumber, " changed to: ", checkbox->getToggleState());
+                }
+            };
+        }
+        
+        // Set current state
+        if (rowNumber < probeMetadata.size())
+        {
+            checkbox->setToggleState(probeMetadata[rowNumber].onTarget, dontSendNotification);
+        }
+        
+        return checkbox;
+    }
+    
+    // Checkbox for Recorded column (column 17)
+    if (columnId == 17)
+    {
+        ToggleButton* checkbox = dynamic_cast<ToggleButton*>(existingComponentToUpdate);
+        
+        if (checkbox == nullptr)
+        {
+            checkbox = new ToggleButton();
+            checkbox->setName("RecordedCheckbox_" + String(rowNumber));
+            checkbox->onClick = [this, checkbox, rowNumber]()
+            {
+                if (rowNumber < probeMetadata.size())
+                {
+                    probeMetadata.getReference(rowNumber).recorded = checkbox->getToggleState();
+                    LOGD("Recorded for row ", rowNumber, " changed to: ", checkbox->getToggleState());
+                }
+            };
+        }
+        
+        // Set current state
+        if (rowNumber < probeMetadata.size())
+        {
+            checkbox->setToggleState(probeMetadata[rowNumber].recorded, dontSendNotification);
+        }
+        
+        return checkbox;
+    }
+    
+    // Button for the Delete column (column 18)
+    if (columnId == 18)
     {
         TextButton* button = dynamic_cast<TextButton*>(existingComponentToUpdate);
         
@@ -741,35 +919,7 @@ void EphysMetadataGeneratorCanvas::buttonClicked(Button* buttonThatWasClicked)
         return; // Early return to avoid checking other button types
     }
     
-    // Check if it's the Add Row button
-    if (buttonName == "AddRowButton")
-    {
-        // Create a new probe metadata entry with default values
-        ProbeMetadata newProbe;
-        newProbe.probe = "Probe " + String(char('A' + probeMetadata.size())); // Generate next letter
-        newProbe.manipulator = "62219"; // Default manipulator
-        newProbe.arcAngle = "0";
-        newProbe.moduleAngle = "0";
-        newProbe.rotation = "0";
-        newProbe.x = "0.0";
-        newProbe.y = "0.0";
-        newProbe.z = "0.0";
-        newProbe.surface = "0.0";
-        newProbe.targetStructure = "";
-        newProbe.dye = "CM-DiI"; // Default dye
-        newProbe.notes = "";
-        
-        // Add the new probe to the data array
-        probeMetadata.add(newProbe);
-        
-        // Update the table to show the new row
-        metadataTable->updateContent();
-        metadataTable->repaint();
-        
-        LOGD("Added new probe row: ", newProbe.probe, " (total rows: ", probeMetadata.size(), ")");
-        
-        return; // Early return to avoid checking other button types
-    }
+    // (Add Row button removed)
     
     // Check if it's a surface button
     if (buttonName.startsWith("SurfaceButton_"))
@@ -816,8 +966,52 @@ void EphysMetadataGeneratorCanvas::buttonClicked(Button* buttonThatWasClicked)
             surfaceButton->repaint();
         }
     }
+    // Check if it's a hemisphere button
+    else if (buttonName.startsWith("HemisphereButton_"))
+    {
+        // Extract the row number from the button name
+        String rowString = buttonName.substring(17); // Remove "HemisphereButton_" prefix
+        int rowNumber = rowString.getIntValue();
+        
+        if (rowNumber < probeMetadata.size())
+        {
+            TextButton* hemisphereButton = static_cast<TextButton*>(buttonThatWasClicked);
+            String currentHemisphere = probeMetadata[rowNumber].hemisphere;
+            
+            // Cycle through None -> L -> R -> None
+            if (currentHemisphere.isEmpty() || currentHemisphere == "")
+            {
+                // Switch to L
+                probeMetadata.getReference(rowNumber).hemisphere = "L";
+                hemisphereButton->setButtonText("L");
+                hemisphereButton->setColour(TextButton::buttonColourId, Colours::lightblue);
+                hemisphereButton->setColour(TextButton::textColourOnId, Colours::black);
+                LOGD("Hemisphere for row ", rowNumber, " changed to L");
+            }
+            else if (currentHemisphere == "L")
+            {
+                // Switch to R
+                probeMetadata.getReference(rowNumber).hemisphere = "R";
+                hemisphereButton->setButtonText("R");
+                hemisphereButton->setColour(TextButton::buttonColourId, Colours::lightcoral);
+                hemisphereButton->setColour(TextButton::textColourOnId, Colours::black);
+                LOGD("Hemisphere for row ", rowNumber, " changed to R");
+            }
+            else
+            {
+                // Switch back to None
+                probeMetadata.getReference(rowNumber).hemisphere = "";
+                hemisphereButton->setButtonText("None");
+                hemisphereButton->setColour(TextButton::buttonColourId, findColour(ThemeColours::widgetBackground));
+                hemisphereButton->setColour(TextButton::textColourOnId, findColour(ThemeColours::defaultText));
+                LOGD("Hemisphere for row ", rowNumber, " changed to None");
+            }
+            
+            hemisphereButton->repaint();
+        }
+    }
     // Check if it's a dye button
-    if (buttonName.startsWith("DyeButton_"))
+    else if (buttonName.startsWith("DyeButton_"))
     {
         // Extract the row number from the button name
         String rowString = buttonName.substring(10); // Remove "DyeButton_" prefix
@@ -1035,7 +1229,6 @@ void EphysMetadataGeneratorCanvas::stagePositionsUpdated(const Array<StagePositi
     LOGD("Updated ", updatedCount, " out of ", positions.size(), " stage positions");
     
     // Refresh the table to show updated values
-    metadataTable->updateContent();
     metadataTable->repaint();
 }
 
@@ -1078,6 +1271,11 @@ void EphysMetadataGeneratorCanvas::saveCustomParametersToXml(XmlElement* xml)
         probeElement->setAttribute("targetStructure", probe.targetStructure);
         probeElement->setAttribute("dye", probe.dye);
         probeElement->setAttribute("notes", probe.notes);
+        probeElement->setAttribute("hemisphere", probe.hemisphere);
+        probeElement->setAttribute("implantHoleNumber", probe.implantHoleNumber);
+        probeElement->setAttribute("inserted", probe.inserted);
+        probeElement->setAttribute("onTarget", probe.onTarget);
+        probeElement->setAttribute("recorded", probe.recorded);
     }
     
     // Save server address setting
@@ -1130,6 +1328,11 @@ void EphysMetadataGeneratorCanvas::loadCustomParametersFromXml(XmlElement* xml)
                 probe.targetStructure = probeElement->getStringAttribute("targetStructure", "");
                 probe.dye = probeElement->getStringAttribute("dye", "CM-DiI");
                 probe.notes = probeElement->getStringAttribute("notes", "");
+                probe.hemisphere = probeElement->getStringAttribute("hemisphere", "");
+                probe.implantHoleNumber = probeElement->getStringAttribute("implantHoleNumber", "");
+                probe.inserted = probeElement->getBoolAttribute("inserted", true);
+                probe.onTarget = probeElement->getBoolAttribute("onTarget", true);
+                probe.recorded = probeElement->getBoolAttribute("recorded", true);
                 
                 probeMetadata.add(probe);
             }
@@ -1337,6 +1540,11 @@ Metadata::Acquisition EphysMetadataGeneratorCanvas::getLatestMetadata()
         probeConfig.coordinate_system.axes.add (Metadata::Axis ({ "Axis", "Z", "Up_to_down" }));
         probeConfig.dye = probeMetadata[i].dye;
         probeConfig.notes = probeMetadata[i].notes;
+        probeConfig.hemisphere = probeMetadata[i].hemisphere;
+        probeConfig.implant_hole_number = probeMetadata[i].implantHoleNumber;
+        probeConfig.inserted = probeMetadata[i].inserted;
+        probeConfig.on_target = probeMetadata[i].onTarget;
+        probeConfig.recorded = probeMetadata[i].recorded;
         
         ephysAssemblyConfig.modules.add (misModuleConfig);
         ephysAssemblyConfig.manipulator = manipulatorConfig;

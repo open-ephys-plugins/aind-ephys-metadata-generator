@@ -160,6 +160,21 @@ struct ProbeConfig
     
     /** Notes */
     String notes;
+    
+    /** Hemisphere */
+    String hemisphere;
+    
+    /** Implant hole number */
+    String implant_hole_number;
+    
+    /** Inserted */
+    bool inserted;
+    
+    /** On target */
+    bool on_target;
+    
+    /** Recorded */
+    bool recorded;
 };
 
 struct ManipulatorConfig

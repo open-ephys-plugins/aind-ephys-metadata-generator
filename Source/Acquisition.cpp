@@ -299,7 +299,21 @@ var Acquisition::probeConfigToJSON(const ProbeConfig& probe)
     jsonObj->setProperty("transform", var(transformArrayData));
     
     jsonObj->setProperty("dye", probe.dye);
-    jsonObj->setProperty("notes", probe.notes);
+
+    String notesForExport = probe.notes;
+    if (notesForExport.isNotEmpty())
+        notesForExport += "\n";
+    notesForExport += "Hemisphere: ";
+    notesForExport += probe.hemisphere.isEmpty() ? "None" : probe.hemisphere;
+    notesForExport += "\nHole #: ";
+    notesForExport += probe.implant_hole_number.isEmpty() ? "N/A" : probe.implant_hole_number;
+    notesForExport += "\nInserted: ";
+    notesForExport += (probe.inserted ? "true" : "false");
+    notesForExport += "\nOn Target: ";
+    notesForExport += (probe.on_target ? "true" : "false");
+    notesForExport += "\nRecorded: ";
+    notesForExport += (probe.recorded ? "true" : "false");
+    jsonObj->setProperty("notes", notesForExport);
     
     return var(jsonObj);
 }
