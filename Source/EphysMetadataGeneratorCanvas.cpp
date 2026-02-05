@@ -35,7 +35,14 @@ EphysMetadataGeneratorCanvas::EphysMetadataGeneratorCanvas(EphysMetadataGenerato
     metadataTable->setModel(this);
     metadataTable->setColour(ListBox::outlineColourId, Colours::grey);
     metadataTable->setOutlineThickness(1);
+    metadataTable->setHeaderHeight (30);
+    metadataTable->setRowHeight (26);
+    metadataTable->setRowSelectedOnMouseDown (false);
+    metadataTable->setAutoSizeMenuOptionShown (false);
+    metadataTable->getViewport()->setScrollBarThickness (12);
     addAndMakeVisible(metadataTable.get());
+
+    tableCellFont = FontOptions("Inter", "Medium", 16.0f);
     
     // (Add Row button removed)
     
@@ -80,7 +87,7 @@ EphysMetadataGeneratorCanvas::EphysMetadataGeneratorCanvas(EphysMetadataGenerato
     metadataTable->getHeader().addColumn("X", 6, 60, 60, 60, TableHeaderComponent::notResizableOrSortable);
     metadataTable->getHeader().addColumn("Y", 7, 60, 60, 60, TableHeaderComponent::notResizableOrSortable);
     metadataTable->getHeader().addColumn("Z", 8, 60, 60, 60, TableHeaderComponent::notResizableOrSortable);
-    metadataTable->getHeader().addColumn("Surface", 9, 80, 80, 80, TableHeaderComponent::notResizableOrSortable);
+    metadataTable->getHeader().addColumn("Surface", 9, 100, 100, 100, TableHeaderComponent::notResizableOrSortable);
     metadataTable->getHeader().addColumn("Target Structure", 10, 150, 150, 150, TableHeaderComponent::notResizableOrSortable);
     metadataTable->getHeader().addColumn("Dye", 11, 80, 80, 80, TableHeaderComponent::notResizableOrSortable);
     metadataTable->getHeader().addColumn("Notes", 12, 150, 100, 400, TableHeaderComponent::notSortable);
@@ -184,89 +191,110 @@ void EphysMetadataGeneratorCanvas::updateSettings()
     // Get all data streams from the processor
     Array<const DataStream*> dataStreams = processor->getDataStreams();
     
-    // Track which existing probes match current streams
-    Array<String> foundProbeNames;
+    // Create a list of Neuropixels probe names
+    Array<String> neuropixelsProbeNames;
+
+    // Keep track of probe serial numbers already added
+    Array<String> addedSerialNumbers;
     
-    // Iterate through all data streams and identify Neuropixels probes
     for (auto stream : dataStreams)
     {
-        String deviceName = "Unknown Device";
-        bool isNeuropixels = false;
+        String streamName = "Unknown";
         
         if (stream->device != nullptr)
         {
-            // Check for neuropixels.adcs metadata to identify Neuropixels probes
+            // Check if this stream has neuropixels metadata
             int adcMetadataIndex = stream->device->findMetadata(
                 MetadataDescriptor::MetadataType::UINT16,
                 1,
                 "neuropixels.adcs");
+
+            const String serialNumber = stream->device->serial_number;
             
-            if (adcMetadataIndex > -1)
+            if (adcMetadataIndex > -1 && !addedSerialNumbers.contains(serialNumber))
             {
-                // This is a Neuropixels device
-                isNeuropixels = true;
-                deviceName = stream->device->getName();
-                foundProbeNames.add(deviceName);
+                // This is a Neuropixels stream with a unique serial number
+                streamName = stream->getName();
+                if (streamName.contains("-AP"))
+                    streamName = streamName.dropLastCharacters (3);
+                else if (streamName.contains("-LFP"))
+                    streamName = streamName.dropLastCharacters (4);
+
+                neuropixelsProbeNames.add(streamName);
                 
-                LOGD("Found Neuropixels device: ", deviceName);
-                
-                // Check if this probe already exists in our metadata
-                bool probeExists = false;
-                for (int i = 0; i < probeMetadata.size(); ++i)
-                {
-                    if (probeMetadata[i].probe == deviceName)
-                    {
-                        probeExists = true;
-                        LOGD("Probe ", deviceName, " already exists in metadata");
-                        break;
-                    }
-                }
-                
-                // If probe doesn't exist, add it with default values
-                if (!probeExists)
-                {
-                    ProbeMetadata newProbe;
-                    newProbe.probe = deviceName;
-                    newProbe.manipulator = ""; // Will be set by user/stage server
-                    newProbe.arcAngle = "0";
-                    newProbe.moduleAngle = "0";
-                    newProbe.rotation = "0";
-                    newProbe.x = "0.0";
-                    newProbe.y = "0.0";
-                    newProbe.z = "0.0";
-                    newProbe.surface = "0.0";
-                    newProbe.targetStructure = "";
-                    newProbe.dye = "CM-DiI";
-                    newProbe.notes = "";
-                    newProbe.hemisphere = "";
-                    newProbe.implantHoleNumber = "";
-                    newProbe.inserted = true;
-                    newProbe.onTarget = true;
-                    newProbe.recorded = true;
-                    
-                    probeMetadata.add(newProbe);
-                    LOGD("Added new probe: ", deviceName, " (total probes: ", probeMetadata.size(), ")");
-                }
+                LOGD("Found Neuropixels stream: ", streamName);
+                addedSerialNumbers.add(serialNumber);
             }
         }
     }
     
-    // Remove probes that are no longer present in the data streams
-    for (int i = probeMetadata.size() - 1; i >= 0; --i)
+    // Update the probe metadata array to match the number of Neuropixels probes
+    // Keep existing metadata if probe serial numbers match, otherwise create new entries
+    Array<ProbeMetadata> updatedMetadata;
+    
+    for (int i = 0; i < addedSerialNumbers.size(); ++i)
     {
-        if (!foundProbeNames.contains(probeMetadata[i].probe))
+        String serialNumber = addedSerialNumbers[i];
+        String probeName = neuropixelsProbeNames[i];
+        
+        // Check if we already have metadata for this probe
+        int existingIndex = -1;
+        for (int j = 0; j < probeMetadata.size(); ++j)
         {
-            LOGD("Removing probe that is no longer in stream: ", probeMetadata[i].probe);
-            probeMetadata.remove(i);
+            if (probeMetadata[j].serialNumber == serialNumber)
+            {
+                existingIndex = j;
+                break;
+            }
         }
+        
+        if (existingIndex >= 0)
+        {
+            // Keep existing metadata
+            updatedMetadata.add(probeMetadata[existingIndex]);
+        }
+        else
+        {
+            // Create new metadata with defaults
+            ProbeMetadata newProbe;
+            newProbe.probe = probeName;
+            newProbe.serialNumber = serialNumber;
+            newProbe.manipulator = "";
+            newProbe.arcAngle = "0";
+            newProbe.moduleAngle = "0";
+            newProbe.rotation = "0";
+            newProbe.x = "0.0";
+            newProbe.y = "0.0";
+            newProbe.z = "0.0";
+            newProbe.surface = "0.0";
+            newProbe.targetStructure = "";
+            newProbe.dye = "CM-DiI";
+            newProbe.notes = "";
+            newProbe.hemisphere = "";
+            newProbe.implantHoleNumber = "0";
+            newProbe.inserted = true;
+            newProbe.onTarget = true;
+            newProbe.recorded = true;
+            
+            updatedMetadata.add(newProbe);
+            LOGD("Created new metadata for probe: ", probeName);
+        }
+
+        maxStreamNameWidth = jmax(maxStreamNameWidth, (int)TextLayout::getStringWidth (tableCellFont, probeName) + 20);
     }
     
-    // Update the table to reflect changes
+    // Replace the probe metadata array
+    probeMetadata = updatedMetadata;
+    
+    // Update the table display
     if (metadataTable != nullptr)
     {
         metadataTable->updateContent();
         metadataTable->repaint();
+        metadataTable->autoSizeColumn (1); // Auto-size the Probe column
     }
+    
+    LOGD("Updated probe metadata table with ", probeMetadata.size(), " probes");
 }
 
 
@@ -283,45 +311,44 @@ int EphysMetadataGeneratorCanvas::getNumRows()
 
 void EphysMetadataGeneratorCanvas::paintRowBackground(Graphics& g, int rowNumber, int width, int height, bool rowIsSelected)
 {
-    if (rowIsSelected)
-        g.fillAll(Colour(0x44000000));
-    else if (rowNumber % 2)
-        g.fillAll(Colour(0x22000000));
+    Colour rowColour = findColour (ThemeColours::componentBackground);
+
+    if (rowNumber % 2 == 0)
+        g.fillAll (rowColour);
+    else
+        g.fillAll (rowColour.darker (0.15f));
 }
 
 void EphysMetadataGeneratorCanvas::paintCell(Graphics& g, int rowNumber, int columnId, int width, int height, bool rowIsSelected)
 {
     g.setColour(getLookAndFeel().findColour(Label::textColourId));
-    g.setFont(14.0f);
+    g.setFont(tableCellFont);
     
     if (rowNumber < probeMetadata.size())
     {
-        // Do not draw text for Surface, Dye, Notes, Hemisphere, Hole #, checkboxes, and Delete columns
-        if (columnId == 9 || columnId == 10 || columnId == 11 || columnId == 12 || columnId == 13 || columnId == 14 || columnId == 15 || columnId == 16 || columnId == 17 || columnId == 18)
-            return;
-        String text;
-        const ProbeMetadata& row = probeMetadata[rowNumber];
-        switch (columnId)
+        // Draw text for non-editable columns
+        if (columnId == 1 || columnId == 6 || columnId == 7 || columnId == 8)
         {
-            case 1: text = row.probe; break;
-            case 2: text = row.manipulator; break;
-            case 3: text = row.arcAngle; break;
-            case 4: text = row.moduleAngle; break;
-            case 5: text = row.rotation; break;
-            case 6: text = row.x; break;
-            case 7: text = row.y; break;
-            case 8: text = row.z; break;
-            case 9: text = row.surface; break;
+            String text;
+            const ProbeMetadata& row = probeMetadata[rowNumber];
+            switch (columnId)
+            {
+                case 1: text = row.probe; break;
+                case 6: text = row.x; break;
+                case 7: text = row.y; break;
+                case 8: text = row.z; break;
+                default: break;
+            }
+            g.drawText(text, 5, 0, width - 10, height, Justification::centredLeft, true);
         }
-        g.drawText(text, 2, 0, width - 4, height, Justification::centredLeft, true);
     }
 }
 
 void EphysMetadataGeneratorCanvas::initializeTable()
 {
-    // Table will be populated automatically via updateSettings() when data streams are available
-    // Start with an empty table
-    probeMetadata.clear();
+    // Table will be populated by updateSettings() when data streams are available
+    // No sample data needed - probes will be detected automatically from Neuropixels streams
+    
     metadataTable->updateContent();
 }
 
@@ -660,18 +687,21 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
                 button->setButtonText("L");
                 button->setColour(TextButton::buttonColourId, Colours::lightblue);
                 button->setColour(TextButton::textColourOnId, Colours::black);
+                button->setColour(TextButton::textColourOffId, Colours::black);
             }
             else if (currentHemisphere == "R")
             {
                 button->setButtonText("R");
                 button->setColour(TextButton::buttonColourId, Colours::lightcoral);
                 button->setColour(TextButton::textColourOnId, Colours::black);
+                button->setColour(TextButton::textColourOffId, Colours::black);
             }
             else
             {
                 button->setButtonText("None");
                 button->setColour(TextButton::buttonColourId, findColour(ThemeColours::widgetBackground));
                 button->setColour(TextButton::textColourOnId, findColour(ThemeColours::defaultText));
+                button->setColour(TextButton::textColourOffId, findColour(ThemeColours::defaultText));
             }
         }
         
@@ -688,7 +718,6 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
             label = new Label();
             label->setEditable(true);
             label->setJustificationType(Justification::centred);
-            label->setColour(Label::outlineColourId, findColour(ThemeColours::outline));
             label->setName("ImplantHole_" + String(rowNumber));
 
             label->onEditorShow = [this, label]()
@@ -844,6 +873,17 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
     }
     
     return nullptr;
+}
+
+int EphysMetadataGeneratorCanvas::getColumnAutoSizeWidth(int columnId)
+{
+    // Auto-size only the Probe column (column 1)
+    if (columnId == 1)
+    {
+        return 100; // Minimum width
+    }
+    
+    return -1; // Default behavior for other columns
 }
 
 bool EphysMetadataGeneratorCanvas::isValidAngleInput(const String& text)
@@ -1260,6 +1300,7 @@ void EphysMetadataGeneratorCanvas::saveCustomParametersToXml(XmlElement* xml)
         
         // Save all probe metadata fields
         probeElement->setAttribute("probe", probe.probe);
+        probeElement->setAttribute("serialNumber", probe.serialNumber);
         probeElement->setAttribute("manipulator", probe.manipulator);
         probeElement->setAttribute("arcAngle", probe.arcAngle);
         probeElement->setAttribute("moduleAngle", probe.moduleAngle);
@@ -1317,6 +1358,7 @@ void EphysMetadataGeneratorCanvas::loadCustomParametersFromXml(XmlElement* xml)
                 
                 // Load all probe metadata fields
                 probe.probe = probeElement->getStringAttribute("probe", "");
+                probe.serialNumber = probeElement->getStringAttribute("serialNumber", "");
                 probe.manipulator = probeElement->getStringAttribute("manipulator", "62219");
                 probe.arcAngle = probeElement->getStringAttribute("arcAngle", "0");
                 probe.moduleAngle = probeElement->getStringAttribute("moduleAngle", "0");
