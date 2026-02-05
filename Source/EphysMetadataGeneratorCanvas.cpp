@@ -990,53 +990,124 @@ void EphysMetadataGeneratorCanvas::buttonClicked(Button* buttonThatWasClicked)
     // Check if it's the Add Row button
     if (buttonName == "AddRowButton")
     {
-        // Generate a unique probe name
-        String uniqueProbeName;
-        int probeCounter = probeMetadata.size();
+        // Create a component with a text editor for the user to enter the device name
+        auto inputComponent = std::make_unique<CustomDeviceInputComponent>();
+        inputComponent->setSize(360, 80);
         
-        // Generate name: A-Z, then AA, AB, AC, etc.
-        if (probeCounter < 26)
+        auto label = std::make_unique<Label>("DeviceNameLabel", "Enter device name:");
+        label->setBounds(10, 10, 130, 25);
+        label->setFont (FontOptions ("Inter", "Medium", 16.0f));
+        label->setJustificationType(Justification::centredLeft);
+        inputComponent->addAndMakeVisible(*label);
+        label.release();  // Transfer ownership to parent
+        
+        auto textEditor = std::make_unique<TextEditor>();
+        textEditor->setName("DeviceNameEditor");
+        textEditor->setBounds(140, 10, 210, 25);
+        textEditor->setReturnKeyStartsNewLine(false);
+        textEditor->setMultiLine(false);
+        inputComponent->addAndMakeVisible(*textEditor);
+        auto rawTextEditor = textEditor.get();
+        textEditor.release();  // Transfer ownership to parent
+        
+        auto okButton = std::make_unique<TextButton>("OK");
+        okButton->setBounds(115, 45, 60, 25);
+        inputComponent->addAndMakeVisible(*okButton);
+        auto rawOkButton = okButton.get();
+        okButton.release();  // Transfer ownership to parent
+        
+        auto cancelButton = std::make_unique<TextButton>("Cancel");
+        cancelButton->setBounds(185, 45, 60, 25);
+        inputComponent->addAndMakeVisible(*cancelButton);
+        auto rawCancelButton = cancelButton.get();
+        cancelButton.release();  // Transfer ownership to parent
+        
+        // Launch the CallOutBox asynchronously (takes ownership of inputComponent)
+        auto& calloutBox = CallOutBox::launchAsynchronously(
+            std::move(inputComponent),
+            buttonThatWasClicked->getScreenBounds(),
+            nullptr
+        );
+        calloutBox.setDismissalMouseClicksAreAlwaysConsumed(true);
+
+
+        // Capture 'this' and raw pointers in the lambdas
+        rawOkButton->onClick = [this, rawTextEditor, &calloutBox]()
         {
-            uniqueProbeName = "Probe " + String(char('A' + probeCounter));
-        }
-        else
+            String deviceName = rawTextEditor->getText().trim();
+            
+            // Validate the device name
+            if (deviceName.isEmpty())
+            {
+                AlertWindow::showMessageBoxAsync(
+                    AlertWindow::WarningIcon,
+                    "Invalid Input",
+                    "Please enter a device name.",
+                    "OK"
+                );
+                return;
+            }
+            
+            // Check for duplicate names
+            for (const auto& existingProbe : probeMetadata)
+            {
+                if (existingProbe.probe == deviceName)
+                {
+                    AlertWindow::showMessageBoxAsync(
+                        AlertWindow::WarningIcon,
+                        "Duplicate Name",
+                        "A device with the name \"" + deviceName + "\" already exists.",
+                        "OK"
+                    );
+                    return;
+                }
+            }
+            
+            // Create a new probe metadata entry with default values
+            ProbeMetadata newProbe;
+            newProbe.probe = deviceName;
+            newProbe.serialNumber = deviceName;  // Use device name as serial number for manual devices
+            newProbe.manipulator = "";
+            newProbe.arcAngle = "0";
+            newProbe.moduleAngle = "0";
+            newProbe.rotation = "0";
+            newProbe.x = "0.0";
+            newProbe.y = "0.0";
+            newProbe.z = "0.0";
+            newProbe.surface = "0.0";
+            newProbe.targetStructure = "";
+            newProbe.dye = "CM-DiI";
+            newProbe.notes = "";
+            newProbe.hemisphere = "";
+            newProbe.implantHoleNumber = "";
+            newProbe.inserted = true;
+            newProbe.onTarget = true;
+            newProbe.recorded = true;
+            newProbe.isManuallyCreated = true;  // Mark as manually created
+            
+            // Add the new probe to the data array
+            probeMetadata.add(newProbe);
+            
+            // Update the table to show the new row
+            metadataTable->updateContent();
+            metadataTable->repaint();
+            
+            LOGD("Added new device row: ", newProbe.probe, " (total rows: ", probeMetadata.size(), ")");
+            
+            // Close the callout box
+            calloutBox.dismiss();
+        };
+        
+        rawCancelButton->onClick = [&calloutBox]()
         {
-            int letterIndex = probeCounter - 26;
-            char firstLetter = 'A' + (letterIndex / 26);
-            char secondLetter = 'A' + (letterIndex % 26);
-            uniqueProbeName = "Probe " + String(firstLetter) + String(secondLetter);
-        }
+            calloutBox.dismiss();
+        };
         
-        // Create a new probe metadata entry with default values
-        ProbeMetadata newProbe;
-        newProbe.probe = uniqueProbeName;
-        newProbe.serialNumber = uniqueProbeName;  // Use probe name as serial number for manual probes
-        newProbe.manipulator = "";
-        newProbe.arcAngle = "0";
-        newProbe.moduleAngle = "0";
-        newProbe.rotation = "0";
-        newProbe.x = "0.0";
-        newProbe.y = "0.0";
-        newProbe.z = "0.0";
-        newProbe.surface = "0.0";
-        newProbe.targetStructure = "";
-        newProbe.dye = "CM-DiI";
-        newProbe.notes = "";
-        newProbe.hemisphere = "";
-        newProbe.implantHoleNumber = "";
-        newProbe.inserted = true;
-        newProbe.onTarget = true;
-        newProbe.recorded = true;
-        newProbe.isManuallyCreated = true;  // Mark as manually created
-        
-        // Add the new probe to the data array
-        probeMetadata.add(newProbe);
-        
-        // Update the table to show the new row
-        metadataTable->updateContent();
-        metadataTable->repaint();
-        
-        LOGD("Added new probe row: ", newProbe.probe, " (total rows: ", probeMetadata.size(), ")");
+        // Handle Enter key to confirm
+        rawTextEditor->onReturnKey = [rawOkButton]()
+        {
+            rawOkButton->triggerClick();
+        };
         
         return; // Early return to avoid checking other button types
     }

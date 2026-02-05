@@ -144,6 +144,19 @@ private:
     
     /** Button to add new rows to the table */
     std::unique_ptr<TextButton> addRowButton;
+
+    class CustomDeviceInputComponent : public Component
+    {
+    public:
+        CustomDeviceInputComponent() = default;
+        ~CustomDeviceInputComponent() override = default;
+
+        void paint (Graphics& g) override
+        {
+            g.setColour (findColour (ThemeColours::componentBackground));
+            g.fillRoundedRectangle (getLocalBounds().toFloat().reduced(1.0f), 3.0f);
+        }
+    };
     
     /** Components for setting HTTP server address */
     std::unique_ptr<Label> serverAddressLabel;
