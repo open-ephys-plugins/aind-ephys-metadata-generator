@@ -329,7 +329,7 @@ void AutoCompleteTextEditor::showSuggestions(const StringArray& suggestions)
                 WeakReference<AutoCompleteTextEditor> safeThis(this);
                 if (safeThis != nullptr)
                 {
-                    setText(selection);
+                    setText(selection, false);
                     hideSuggestions();
                     // Only grab focus if component is still valid and visible
                     if (safeThis != nullptr && safeThis->isShowing())

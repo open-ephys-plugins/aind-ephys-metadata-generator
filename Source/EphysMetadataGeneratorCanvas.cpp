@@ -40,6 +40,7 @@ EphysMetadataGeneratorCanvas::EphysMetadataGeneratorCanvas(EphysMetadataGenerato
     metadataTable->setRowSelectedOnMouseDown (false);
     metadataTable->setAutoSizeMenuOptionShown (false);
     metadataTable->getViewport()->setScrollBarThickness (12);
+    metadataTable->setInterceptsMouseClicks (false, true); // Allow clicks to pass through to cells, but not the header
     addAndMakeVisible(metadataTable.get());
 
     tableCellFont = FontOptions("Inter", "Medium", 16.0f);
@@ -83,25 +84,30 @@ EphysMetadataGeneratorCanvas::EphysMetadataGeneratorCanvas(EphysMetadataGenerato
     addAndMakeVisible(connectButton.get());
     
     // Add columns to the table
-    metadataTable->getHeader().addColumn("Probe", 1, 80, 80, 300, TableHeaderComponent::notSortable);
-    metadataTable->getHeader().addColumn("Manipulator", 2, 100, 100, 300, TableHeaderComponent::notSortable);
-    metadataTable->getHeader().addColumn("Arc Angle", 3, 80, 80, 80, TableHeaderComponent::notResizableOrSortable);
-    metadataTable->getHeader().addColumn("Module Angle", 4, 100, 100, 100, TableHeaderComponent::notResizableOrSortable);
-    metadataTable->getHeader().addColumn("Rotation", 5, 80, 80, 80, TableHeaderComponent::notResizableOrSortable);
-    metadataTable->getHeader().addColumn("X", 6, 60, 60, 60, TableHeaderComponent::notResizableOrSortable);
-    metadataTable->getHeader().addColumn("Y", 7, 60, 60, 60, TableHeaderComponent::notResizableOrSortable);
-    metadataTable->getHeader().addColumn("Z", 8, 60, 60, 60, TableHeaderComponent::notResizableOrSortable);
-    metadataTable->getHeader().addColumn("Surface", 9, 100, 100, 100, TableHeaderComponent::notResizableOrSortable);
-    metadataTable->getHeader().addColumn("Target Structure", 10, 150, 150, 150, TableHeaderComponent::notResizableOrSortable);
-    metadataTable->getHeader().addColumn("Dye", 11, 80, 80, 80, TableHeaderComponent::notResizableOrSortable);
-    metadataTable->getHeader().addColumn("Notes", 12, 150, 100, 400, TableHeaderComponent::notSortable);
-    metadataTable->getHeader().addColumn("Hemisphere", 13, 80, 80, 80, TableHeaderComponent::notResizableOrSortable);
-    metadataTable->getHeader().addColumn("Implant Hole #", 14, 90, 90, 90, TableHeaderComponent::notResizableOrSortable);
-    metadataTable->getHeader().addColumn("Inserted?", 15, 70, 70, 70, TableHeaderComponent::notResizableOrSortable);
-    metadataTable->getHeader().addColumn("On Target?", 16, 80, 80, 80, TableHeaderComponent::notResizableOrSortable);
-    metadataTable->getHeader().addColumn("Recorded?", 17, 80, 80, 80, TableHeaderComponent::notResizableOrSortable);
-    metadataTable->getHeader().addColumn("Delete", 18, 50, 50, 50, TableHeaderComponent::notResizableOrSortable);
-    metadataTable->getHeader().setPopupMenuActive (false);
+    metadataTable->getHeader().addColumn("Probe", 1, 80, 80, 300, TableHeaderComponent::visible | TableHeaderComponent::resizable);
+    metadataTable->getHeader().addColumn("Manipulator", 2, 100, 100, 300, TableHeaderComponent::visible | TableHeaderComponent::resizable);
+    metadataTable->getHeader().addColumn("Arc Angle", 3, 80, 80, 80, TableHeaderComponent::visible);
+    metadataTable->getHeader().addColumn("Module Angle", 4, 100, 100, 100, TableHeaderComponent::visible);
+    metadataTable->getHeader().addColumn("Rotation", 5, 80, 80, 80, TableHeaderComponent::visible);
+    metadataTable->getHeader().addColumn("X", 6, 60, 60, 60, TableHeaderComponent::visible);
+    metadataTable->getHeader().addColumn("Y", 7, 60, 60, 60, TableHeaderComponent::visible);
+    metadataTable->getHeader().addColumn("Z", 8, 60, 60, 60, TableHeaderComponent::visible);
+    metadataTable->getHeader().addColumn("Surface", 9, 100, 100, 100, TableHeaderComponent::visible);
+    metadataTable->getHeader().addColumn("Pragma X", 10, 70, 70, 70, 0);
+    metadataTable->getHeader().addColumn("Pragma Y", 11, 70, 70, 70, 0);
+    metadataTable->getHeader().addColumn("Pragma Z", 12, 70, 70, 70, 0);
+    metadataTable->getHeader().addColumn("Target Structure", 13, 120, 120, 120, TableHeaderComponent::visible);
+    metadataTable->getHeader().addColumn("Dye", 14, 80, 80, 80, TableHeaderComponent::visible);
+    metadataTable->getHeader().addColumn("Notes", 15, 150, 100, 400, TableHeaderComponent::visible | TableHeaderComponent::resizable);
+    metadataTable->getHeader().addColumn("Hemisphere", 16, 80, 80, 80, TableHeaderComponent::visible);
+    metadataTable->getHeader().addColumn("Implant Hole #", 17, 90, 90, 90, TableHeaderComponent::visible);
+    metadataTable->getHeader().addColumn("Inserted?", 18, 70, 70, 70, TableHeaderComponent::visible);
+    metadataTable->getHeader().addColumn("On Target?", 19, 80, 80, 80, TableHeaderComponent::visible);
+    metadataTable->getHeader().addColumn("Recorded?", 20, 80, 80, 80, TableHeaderComponent::visible);
+    metadataTable->getHeader().addColumn("Delete", 21, 50, 50, 50, TableHeaderComponent::visible);
+
+    metadataTable->getHeader().setPopupMenuActive(false); // Disable default column visibility menu since we have a custom one
+    metadataTable->getHeader().addMouseListener (this, true); // Listen for mouse events on the header to show custom context menu
 
     // Create some initial values
     initializeTable();
@@ -274,6 +280,9 @@ void EphysMetadataGeneratorCanvas::updateSettings()
             newProbe.y = "0.0";
             newProbe.z = "0.0";
             newProbe.surface = "0.0";
+            newProbe.pragmaX = "0.0";
+            newProbe.pragmaY = "0.0";
+            newProbe.pragmaZ = "0.0";
             newProbe.targetStructure = "";
             newProbe.dye = "CM-DiI";
             newProbe.notes = "";
@@ -552,8 +561,75 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
         return button;
     }
     
-    // AutoCompleteTextEditor for the Target Structure column (column 10)
-    if (columnId == 10)
+    // TextEditor for the Pragma coordinate columns (Pragma X=10, Pragma Y=11, Pragma Z=12)
+    if (columnId >= 10 && columnId <= 12)
+    {
+        Label* pragmaEditor = dynamic_cast<Label*>(existingComponentToUpdate);
+        
+        if (pragmaEditor == nullptr)
+        {
+            pragmaEditor = new Label();
+            pragmaEditor->setEditable(true);
+            pragmaEditor->setJustificationType(Justification::centred);
+
+            String fieldName;
+            if (columnId == 10)
+                fieldName = "PragmaXEditor_" + String(rowNumber);
+            else if (columnId == 11)
+                fieldName = "PragmaYEditor_" + String(rowNumber);
+            else
+                fieldName = "PragmaZEditor_" + String(rowNumber);
+
+            pragmaEditor->setName(fieldName);
+
+            pragmaEditor->onTextChange = [this, pragmaEditor, rowNumber, columnId]()
+            {
+                if (rowNumber < probeMetadata.size())
+                {
+                    String newText = pragmaEditor->getText();
+
+                    if (!isValidCoordinateInput(newText))
+                    {
+                        // Revert to previous valid value
+                        String validValue;
+                        if (columnId == 10) validValue = probeMetadata[rowNumber].pragmaX;
+                        else if (columnId == 11) validValue = probeMetadata[rowNumber].pragmaY;
+                        else if (columnId == 12) validValue = probeMetadata[rowNumber].pragmaZ;
+
+                        pragmaEditor->setText(validValue, dontSendNotification);
+                        return;
+                    }
+
+                    ProbeMetadata& metadata = probeMetadata.getReference(rowNumber);
+
+                    if (columnId == 10)
+                        metadata.pragmaX = newText;
+                    else if (columnId == 11)
+                        metadata.pragmaY = newText;
+                    else
+                        metadata.pragmaZ = newText;
+                }
+            };
+        }
+
+        if (rowNumber < probeMetadata.size())
+        {
+            String currentValue;
+            if (columnId == 10)
+                currentValue = probeMetadata[rowNumber].pragmaX;
+            else if (columnId == 11)
+                currentValue = probeMetadata[rowNumber].pragmaY;
+            else
+                currentValue = probeMetadata[rowNumber].pragmaZ;
+
+            pragmaEditor->setText(currentValue, dontSendNotification);
+        }
+
+        return pragmaEditor;
+    }
+
+    // AutoCompleteTextEditor for the Target Structure column (column 13)
+    if (columnId == 13)
     {
         AutoCompleteTextEditor* autoCompleteEditor = dynamic_cast<AutoCompleteTextEditor*>(existingComponentToUpdate);
         
@@ -590,8 +666,8 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
         return autoCompleteEditor;
     }
     
-    // Button for the Dye column (column 11)
-    if (columnId == 11)
+    // Button for the Dye column (column 14)
+    if (columnId == 14)
     {
         TextButton* button = dynamic_cast<TextButton*>(existingComponentToUpdate);
         
@@ -637,8 +713,8 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
         return button;
     }
     
-    // Button for the Notes column (column 12)
-    if (columnId == 12)
+    // Button for the Notes column (column 15)
+    if (columnId == 15)
     {
         TextButton* button = dynamic_cast<TextButton*>(existingComponentToUpdate);
         
@@ -683,8 +759,8 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
         return button;
     }
     
-    // Button for the Hemisphere column (column 13)
-    if (columnId == 13)
+    // Button for the Hemisphere column (column 16)
+    if (columnId == 16)
     {
         TextButton* button = dynamic_cast<TextButton*>(existingComponentToUpdate);
         
@@ -725,8 +801,8 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
         return button;
     }
     
-    // Label for the Implant Hole Number column (column 14)
-    if (columnId == 14)
+    // Label for the Implant Hole Number column (column 17)
+    if (columnId == 17)
     {
         Label* label = dynamic_cast<Label*>(existingComponentToUpdate);
         
@@ -782,8 +858,8 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
         return label;
     }
     
-    // Checkbox for Inserted column (column 15)
-    if (columnId == 15)
+    // Checkbox for Inserted column (column 18)
+    if (columnId == 18)
     {
         ToggleButton* checkbox = dynamic_cast<ToggleButton*>(existingComponentToUpdate);
         
@@ -810,8 +886,8 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
         return checkbox;
     }
     
-    // Checkbox for On Target column (column 16)
-    if (columnId == 16)
+    // Checkbox for On Target column (column 19)
+    if (columnId == 19)
     {
         ToggleButton* checkbox = dynamic_cast<ToggleButton*>(existingComponentToUpdate);
         
@@ -838,8 +914,8 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
         return checkbox;
     }
     
-    // Checkbox for Recorded column (column 17)
-    if (columnId == 17)
+    // Checkbox for Recorded column (column 20)
+    if (columnId == 20)
     {
         ToggleButton* checkbox = dynamic_cast<ToggleButton*>(existingComponentToUpdate);
         
@@ -866,8 +942,8 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
         return checkbox;
     }
     
-    // Button for the Delete column (column 18)
-    if (columnId == 18)
+    // Button for the Delete column (column 21)
+    if (columnId == 21)
     {
         TextButton* button = dynamic_cast<TextButton*>(existingComponentToUpdate);
         
@@ -934,6 +1010,24 @@ bool EphysMetadataGeneratorCanvas::isValidAngleInput(const String& text)
     // Range check
     return result >= -180.0f && result <= 180.0f;
     
+}
+
+
+bool EphysMetadataGeneratorCanvas::isValidCoordinateInput(const String& text)
+{
+    // Attempt to convert the string to a float
+    auto result = text.getFloatValue();
+
+    // Check if the input actually represents a valid float
+    if (!text.containsOnly("0123456789.-+eE")) return false;
+
+    // Additional strict check: make sure the parsed float produces the same string
+    juce::String trimmed = text.trim();
+    double parsed;
+    if (!trimmed.retainCharacters("0123456789.-+eE").equalsIgnoreCase(trimmed))
+        return false;
+
+    return true;
 }
 
 
@@ -1075,6 +1169,9 @@ void EphysMetadataGeneratorCanvas::buttonClicked(Button* buttonThatWasClicked)
             newProbe.y = "0.0";
             newProbe.z = "0.0";
             newProbe.surface = "0.0";
+            newProbe.pragmaX = "0.0";
+            newProbe.pragmaY = "0.0";
+            newProbe.pragmaZ = "0.0";
             newProbe.targetStructure = "";
             newProbe.dye = "CM-DiI";
             newProbe.notes = "";
@@ -1439,6 +1536,23 @@ void EphysMetadataGeneratorCanvas::stagePositionError(const String& errorMessage
     }
 }
 
+void EphysMetadataGeneratorCanvas::mouseDown(const MouseEvent& event)
+{   
+    if (metadataTable->getHeader().getScreenBounds().contains (event.getScreenPosition())
+        && event.mods.isPopupMenu())
+    {
+        bool currentlyVisible = metadataTable->getHeader().isColumnVisible(10);
+        PopupMenu headerMenu;
+        headerMenu.addItem("Show Pragma Coordinates", true, currentlyVisible, [this, currentlyVisible]()
+        {
+            metadataTable->getHeader().setColumnVisible(10, !currentlyVisible);
+            metadataTable->getHeader().setColumnVisible(11, !currentlyVisible);
+            metadataTable->getHeader().setColumnVisible(12, !currentlyVisible);
+        });
+        headerMenu.showMenuAsync (PopupMenu::Options().withPreferredPopupDirection(PopupMenu::Options::PopupDirection::downwards));
+    }
+}
+
 // XML serialization methods
 void EphysMetadataGeneratorCanvas::saveCustomParametersToXml(XmlElement* xml)
 {
@@ -1462,6 +1576,9 @@ void EphysMetadataGeneratorCanvas::saveCustomParametersToXml(XmlElement* xml)
         probeElement->setAttribute("y", probe.y);
         probeElement->setAttribute("z", probe.z);
         probeElement->setAttribute("surface", probe.surface);
+        probeElement->setAttribute("pragmaX", probe.pragmaX);
+        probeElement->setAttribute("pragmaY", probe.pragmaY);
+        probeElement->setAttribute("pragmaZ", probe.pragmaZ);
         probeElement->setAttribute("targetStructure", probe.targetStructure);
         probeElement->setAttribute("dye", probe.dye);
         probeElement->setAttribute("notes", probe.notes);
@@ -1521,6 +1638,9 @@ void EphysMetadataGeneratorCanvas::loadCustomParametersFromXml(XmlElement* xml)
                 probe.y = probeElement->getStringAttribute("y", "0.0");
                 probe.z = probeElement->getStringAttribute("z", "0.0");
                 probe.surface = probeElement->getStringAttribute("surface", "0.0");
+                probe.pragmaX = probeElement->getStringAttribute("pragmaX", "0.0");
+                probe.pragmaY = probeElement->getStringAttribute("pragmaY", "0.0");
+                probe.pragmaZ = probeElement->getStringAttribute("pragmaZ", "0.0");
                 probe.targetStructure = probeElement->getStringAttribute("targetStructure", "");
                 probe.dye = probeElement->getStringAttribute("dye", "CM-DiI");
                 probe.notes = probeElement->getStringAttribute("notes", "");

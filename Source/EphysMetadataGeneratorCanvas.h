@@ -100,6 +100,9 @@ private:
         String y;
         String z;
         String surface;
+        String pragmaX;
+        String pragmaY;
+        String pragmaZ;
         String targetStructure;
         String dye;
         String notes;
@@ -129,6 +132,9 @@ private:
     /** Validate numeric input for angle columns */
     bool isValidAngleInput(const String& text);
 
+    /** Validate numeric input for coordinate columns */
+    bool isValidCoordinateInput(const String& text);
+
     /** Handle Button clicks */
     void buttonClicked(Button* buttonThatWasClicked) override;
     
@@ -138,6 +144,9 @@ private:
     
     /** Called when there's an error fetching stage positions */
     void stagePositionError(const String& errorMessage) override;
+
+    /** Handle mouse clicks for showing popup menu */
+    void mouseDown(const MouseEvent& event) override;
     
     /** Stage listener for fetching X, Y, Z coordinates */
     std::unique_ptr<StageListener> stageListener;
