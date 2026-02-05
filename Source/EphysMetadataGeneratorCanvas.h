@@ -108,6 +108,7 @@ private:
         bool inserted;
         bool onTarget;
         bool recorded;
+        bool isManuallyCreated = false;
     };
 
     /** Array to hold the probe metadata */
@@ -140,6 +141,9 @@ private:
     
     /** Stage listener for fetching X, Y, Z coordinates */
     std::unique_ptr<StageListener> stageListener;
+    
+    /** Button to add new rows to the table */
+    std::unique_ptr<TextButton> addRowButton;
     
     /** Components for setting HTTP server address */
     std::unique_ptr<Label> serverAddressLabel;

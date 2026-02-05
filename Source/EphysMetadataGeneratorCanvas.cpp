@@ -44,7 +44,11 @@ EphysMetadataGeneratorCanvas::EphysMetadataGeneratorCanvas(EphysMetadataGenerato
 
     tableCellFont = FontOptions("Inter", "Medium", 16.0f);
     
-    // (Add Row button removed)
+    // Create and configure the Add Row button
+    addRowButton = std::make_unique<TextButton>("Add Row");
+    addRowButton->setName("AddRowButton");
+    addRowButton->addListener(this);
+    addAndMakeVisible(addRowButton.get());
     
     // Create and configure the server address components
     serverAddressLabel = std::make_unique<Label>("Server Address Label", "HTTP Server:");
@@ -123,7 +127,7 @@ void EphysMetadataGeneratorCanvas::resized()
 {
     const int buttonHeight = 30;
     const int margin = 10;
-    const int bottomControlsHeight = 40; // Height reserved for server controls
+    const int bottomControlsHeight = 40; // Height reserved for server controls and Add Row button
 
     if (metadataTable != nullptr)
     {
@@ -133,19 +137,21 @@ void EphysMetadataGeneratorCanvas::resized()
         // Position the table at the top
         metadataTable->setBounds(margin, margin, getWidth() - 2 * margin, tableHeight);
 
-        // Position server controls at bottom center
-        if (serverAddressLabel != nullptr && serverAddressEditor != nullptr && connectButton != nullptr)
+        // Position server controls and Add Row button at bottom
+        if (serverAddressLabel != nullptr && serverAddressEditor != nullptr && connectButton != nullptr && addRowButton != nullptr)
         {
             int labelWidth = 100;
             int editorWidth = 200;
             int connectButtonWidth = 200;
-            int totalServerControlsWidth = labelWidth + editorWidth + connectButtonWidth + 2 * margin;
-            int startX = (getWidth() - totalServerControlsWidth) / 2;
+            int addButtonWidth = 150;
+            int totalControlsWidth = labelWidth + editorWidth + connectButtonWidth + addButtonWidth + 3 * margin;
+            int startX = (getWidth() - totalControlsWidth) / 2;
             int bottomY = margin + tableHeight + margin;
 
             serverAddressLabel->setBounds(startX, bottomY, labelWidth, buttonHeight);
             serverAddressEditor->setBounds(startX + labelWidth + margin, bottomY, editorWidth, buttonHeight);
             connectButton->setBounds(startX + labelWidth + editorWidth + 2 * margin, bottomY, connectButtonWidth, buttonHeight);
+            addRowButton->setBounds(startX + labelWidth + editorWidth + connectButtonWidth + 3 * margin, bottomY, addButtonWidth, buttonHeight);
         }
     }
 }
@@ -230,6 +236,7 @@ void EphysMetadataGeneratorCanvas::updateSettings()
     
     // Update the probe metadata array to match the number of Neuropixels probes
     // Keep existing metadata if probe serial numbers match, otherwise create new entries
+    // Always preserve manually-created probes
     Array<ProbeMetadata> updatedMetadata;
     
     for (int i = 0; i < addedSerialNumbers.size(); ++i)
@@ -237,11 +244,11 @@ void EphysMetadataGeneratorCanvas::updateSettings()
         String serialNumber = addedSerialNumbers[i];
         String probeName = neuropixelsProbeNames[i];
         
-        // Check if we already have metadata for this probe
+        // Check if we already have metadata for this probe (non-manual only)
         int existingIndex = -1;
         for (int j = 0; j < probeMetadata.size(); ++j)
         {
-            if (probeMetadata[j].serialNumber == serialNumber)
+            if (!probeMetadata[j].isManuallyCreated && probeMetadata[j].serialNumber == serialNumber)
             {
                 existingIndex = j;
                 break;
@@ -275,12 +282,22 @@ void EphysMetadataGeneratorCanvas::updateSettings()
             newProbe.inserted = true;
             newProbe.onTarget = true;
             newProbe.recorded = true;
+            newProbe.isManuallyCreated = false;
             
             updatedMetadata.add(newProbe);
             LOGD("Created new metadata for probe: ", probeName);
         }
 
         maxStreamNameWidth = jmax(maxStreamNameWidth, (int)TextLayout::getStringWidth (tableCellFont, probeName) + 20);
+    }
+
+    // Add all manually-created probes (they persist regardless of streams)
+    for (int j = 0; j < probeMetadata.size(); ++j)
+    {
+        if (probeMetadata[j].isManuallyCreated)
+        {
+            updatedMetadata.add(probeMetadata[j]);
+        }
     }
     
     // Replace the probe metadata array
@@ -861,12 +878,23 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
             button->addListener(this);
         }
         
-        // Set the button appearance for delete action - red X on transparent background
-        button->setButtonText("X");
-        button->setColour(TextButton::textColourOnId, Colours::red.withAlpha(0.8f));
-        button->setColour(TextButton::textColourOffId, Colours::red.withAlpha(0.8f)); // Ensure color persists
+        // Set the button appearance for delete action - only enable for manually-created probes
+        if (rowNumber < probeMetadata.size() && probeMetadata[rowNumber].isManuallyCreated)
+        {
+            button->setButtonText("X");
+            button->setColour(TextButton::textColourOnId, Colours::red.withAlpha(0.8f));
+            button->setColour(TextButton::textColourOffId, Colours::red.withAlpha(0.8f));
+            button->setEnabled(true);
+        }
+        else
+        {
+            // Disable delete button for auto-detected probes
+            button->setButtonText("X");
+            button->setEnabled(false);
+            button->setColour(TextButton::textColourOnId, Colours::red.withAlpha(0.8f));
+            button->setColour(TextButton::textColourOffId, Colours::red.withAlpha(0.8f));
+        }
         
-        // Make the button slightly smaller and centered
         button->setSize(40, 20);
         
         return button;
@@ -956,6 +984,60 @@ void EphysMetadataGeneratorCanvas::buttonClicked(Button* buttonThatWasClicked)
     if (buttonName == "ConnectButton")
     {
         updateStageListenerEndpoint();
+        return; // Early return to avoid checking other button types
+    }
+    
+    // Check if it's the Add Row button
+    if (buttonName == "AddRowButton")
+    {
+        // Generate a unique probe name
+        String uniqueProbeName;
+        int probeCounter = probeMetadata.size();
+        
+        // Generate name: A-Z, then AA, AB, AC, etc.
+        if (probeCounter < 26)
+        {
+            uniqueProbeName = "Probe " + String(char('A' + probeCounter));
+        }
+        else
+        {
+            int letterIndex = probeCounter - 26;
+            char firstLetter = 'A' + (letterIndex / 26);
+            char secondLetter = 'A' + (letterIndex % 26);
+            uniqueProbeName = "Probe " + String(firstLetter) + String(secondLetter);
+        }
+        
+        // Create a new probe metadata entry with default values
+        ProbeMetadata newProbe;
+        newProbe.probe = uniqueProbeName;
+        newProbe.serialNumber = uniqueProbeName;  // Use probe name as serial number for manual probes
+        newProbe.manipulator = "";
+        newProbe.arcAngle = "0";
+        newProbe.moduleAngle = "0";
+        newProbe.rotation = "0";
+        newProbe.x = "0.0";
+        newProbe.y = "0.0";
+        newProbe.z = "0.0";
+        newProbe.surface = "0.0";
+        newProbe.targetStructure = "";
+        newProbe.dye = "CM-DiI";
+        newProbe.notes = "";
+        newProbe.hemisphere = "";
+        newProbe.implantHoleNumber = "";
+        newProbe.inserted = true;
+        newProbe.onTarget = true;
+        newProbe.recorded = true;
+        newProbe.isManuallyCreated = true;  // Mark as manually created
+        
+        // Add the new probe to the data array
+        probeMetadata.add(newProbe);
+        
+        // Update the table to show the new row
+        metadataTable->updateContent();
+        metadataTable->repaint();
+        
+        LOGD("Added new probe row: ", newProbe.probe, " (total rows: ", probeMetadata.size(), ")");
+        
         return; // Early return to avoid checking other button types
     }
     
@@ -1101,7 +1183,7 @@ void EphysMetadataGeneratorCanvas::buttonClicked(Button* buttonThatWasClicked)
         String rowString = buttonName.substring(13); // Remove "DeleteButton_" prefix
         int rowNumber = rowString.getIntValue();
         
-        if (rowNumber < probeMetadata.size())
+        if (rowNumber < probeMetadata.size() && probeMetadata[rowNumber].isManuallyCreated)
         {
             // Show confirmation dialog before deleting
             String probeIdentifier = probeMetadata[rowNumber].probe;
@@ -1317,6 +1399,7 @@ void EphysMetadataGeneratorCanvas::saveCustomParametersToXml(XmlElement* xml)
         probeElement->setAttribute("inserted", probe.inserted);
         probeElement->setAttribute("onTarget", probe.onTarget);
         probeElement->setAttribute("recorded", probe.recorded);
+        probeElement->setAttribute("isManuallyCreated", probe.isManuallyCreated);
     }
     
     // Save server address setting
@@ -1375,6 +1458,7 @@ void EphysMetadataGeneratorCanvas::loadCustomParametersFromXml(XmlElement* xml)
                 probe.inserted = probeElement->getBoolAttribute("inserted", true);
                 probe.onTarget = probeElement->getBoolAttribute("onTarget", true);
                 probe.recorded = probeElement->getBoolAttribute("recorded", true);
+                probe.isManuallyCreated = probeElement->getBoolAttribute("isManuallyCreated", false);
                 
                 probeMetadata.add(probe);
             }
