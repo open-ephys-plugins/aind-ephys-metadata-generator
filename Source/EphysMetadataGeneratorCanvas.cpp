@@ -682,23 +682,19 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
         if (rowNumber < probeMetadata.size())
         {
             String currentDye = probeMetadata[rowNumber].dye;
-            if (currentDye == "CM-DiI")
-            {
-                button->setButtonText("CM-DiI");
-                button->setColour(TextButton::buttonColourId, Colours::darkred);
-                button->setColour(TextButton::textColourOnId, Colours::white);
-            }
-            else if (currentDye == "DS-DiD")
+            if (currentDye == "DS-DiD")
             {
                 button->setButtonText("DS-DiD");
                 button->setColour(TextButton::buttonColourId, Colours::darkblue);
                 button->setColour(TextButton::textColourOnId, Colours::white);
+                button->setColour(TextButton::textColourOffId, Colours::white);
             }
             else if (currentDye == "None")
             {
                 button->setButtonText("None");
-                button->setColour(TextButton::buttonColourId, Colours::darkgrey);
-                button->setColour(TextButton::textColourOnId, Colours::white);
+                button->setColour(TextButton::buttonColourId, findColour (ThemeColours::widgetBackground));
+                button->setColour(TextButton::textColourOnId, findColour (ThemeColours::defaultText));
+                button->setColour(TextButton::textColourOffId, findColour (ThemeColours::defaultText));
             }
             else
             {
@@ -706,6 +702,7 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
                 button->setButtonText("CM-DiI");
                 button->setColour(TextButton::buttonColourId, Colours::darkred);
                 button->setColour(TextButton::textColourOnId, Colours::white);
+                button->setColour(TextButton::textColourOffId, Colours::white);
                 probeMetadata.getReference(rowNumber).dye = "CM-DiI";
             }
         }
@@ -735,7 +732,6 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
             {
                 displayText = "Add notes...";
                 button->setColour(TextButton::buttonColourId, Colours::white.withAlpha(0.0f));
-                button->setColour(TextButton::textColourOnId, findColour(ThemeColours::defaultText));
             }
             else
             {
@@ -750,7 +746,6 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
                     displayText = fullNotes;
                 }
                 button->setColour(TextButton::buttonColourId, Colours::white.withAlpha(0.0f));
-                button->setColour(TextButton::textColourOnId, findColour(ThemeColours::defaultText));
             }
             
             button->setButtonText(displayText);
@@ -1320,6 +1315,7 @@ void EphysMetadataGeneratorCanvas::buttonClicked(Button* buttonThatWasClicked)
                 dyeButton->setButtonText("DS-DiD");
                 dyeButton->setColour(TextButton::buttonColourId, Colours::darkblue);
                 dyeButton->setColour(TextButton::textColourOnId, Colours::white);
+                dyeButton->setColour(TextButton::textColourOffId, Colours::white);
                 LOGD("Dye for row ", rowNumber, " changed to DS-DiD");
             }
             else if (currentDye == "DS-DiD")
@@ -1327,8 +1323,9 @@ void EphysMetadataGeneratorCanvas::buttonClicked(Button* buttonThatWasClicked)
                 // Switch to None
                 probeMetadata.getReference(rowNumber).dye = "None";
                 dyeButton->setButtonText("None");
-                dyeButton->setColour(TextButton::buttonColourId, Colours::darkgrey);
-                dyeButton->setColour(TextButton::textColourOnId, Colours::white);
+                dyeButton->setColour(TextButton::buttonColourId, findColour(ThemeColours::widgetBackground));
+                dyeButton->setColour(TextButton::textColourOnId, findColour(ThemeColours::defaultText));
+                dyeButton->setColour(TextButton::textColourOffId, findColour(ThemeColours::defaultText));
                 LOGD("Dye for row ", rowNumber, " changed to None");
             }
             else {
@@ -1337,6 +1334,7 @@ void EphysMetadataGeneratorCanvas::buttonClicked(Button* buttonThatWasClicked)
                 dyeButton->setButtonText("CM-DiI");
                 dyeButton->setColour(TextButton::buttonColourId, Colours::darkred);
                 dyeButton->setColour(TextButton::textColourOnId, Colours::white);
+                dyeButton->setColour(TextButton::textColourOffId, Colours::white);
                 LOGD("Dye for row ", rowNumber, " changed to CM-DiI");
             }
             
@@ -1482,13 +1480,13 @@ void EphysMetadataGeneratorCanvas::stagePositionsUpdated(const Array<StagePositi
             if (probe.manipulator == stagePos.serialNumber)
             {
                 // Update the probe position data
-                probe.x = stagePos.x;
-                probe.y = stagePos.y;
-                probe.z = stagePos.z;
+                probe.x = String (stagePos.x.getFloatValue(), 2);
+                probe.y = String (stagePos.y.getFloatValue(), 2);
+                probe.z = String (stagePos.z.getFloatValue(), 2);
                 
-                LOGD("Updated probe row ", probeIndex, " (manipulator: ", probe.manipulator, 
-                     ") with stage position from serial ", stagePos.serialNumber, 
-                     ": X=", stagePos.x, " Y=", stagePos.y, " Z=", stagePos.z);
+                // LOGD("Updated probe row ", probeIndex, " (manipulator: ", probe.manipulator, 
+                //      ") with stage position from serial ", stagePos.serialNumber, 
+                //      ": X=", stagePos.x, " Y=", stagePos.y, " Z=", stagePos.z);
                 
                 updatedCount++;
             }
