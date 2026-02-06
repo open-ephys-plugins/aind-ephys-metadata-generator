@@ -132,7 +132,7 @@ private:
     /** Validate numeric input for angle columns */
     bool isValidAngleInput(const String& text);
 
-    /** Validate numeric input for coordinate columns */
+    /** Validate numeric input for bregma coordinate columns */
     bool isValidCoordinateInput(const String& text);
 
     /** Handle Button clicks */

@@ -106,6 +106,7 @@ AutoCompleteSuggestionList::AutoCompleteSuggestionList(const StringArray& sugges
     listBox->setRowHeight(20);
     listBox->setMouseMoveSelectsRows (true);
     listBox->setOutlineThickness(1);
+    listBox->getViewport()->setScrollBarThickness(10);
     listBox->setColour(ListBox::outlineColourId, findColour(ThemeColours::outline));
     listBox->setColour(ListBox::backgroundColourId, findColour(ThemeColours::menuBackground));
     addAndMakeVisible(listBox.get());
@@ -322,6 +323,12 @@ void AutoCompleteTextEditor::showSuggestions(const StringArray& suggestions)
         
     if (suggestionList == nullptr)
     {
+        if (suggestions.size() == 1 && suggestions[0].equalsIgnoreCase(getText()))
+        {
+            // If the only suggestion is the same as the current text, don't show the list
+            return;
+        }
+
         suggestionList = std::make_unique<AutoCompleteSuggestionList>(suggestions, 
             [this](const String& selection)
             {
@@ -329,7 +336,7 @@ void AutoCompleteTextEditor::showSuggestions(const StringArray& suggestions)
                 WeakReference<AutoCompleteTextEditor> safeThis(this);
                 if (safeThis != nullptr)
                 {
-                    setText(selection, false);
+                    setText(selection);
                     hideSuggestions();
                     // Only grab focus if component is still valid and visible
                     if (safeThis != nullptr && safeThis->isShowing())

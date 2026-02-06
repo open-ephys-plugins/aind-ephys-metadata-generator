@@ -1022,7 +1022,7 @@ bool EphysMetadataGeneratorCanvas::isValidCoordinateInput(const String& text)
     if (!trimmed.retainCharacters("0123456789.-+eE").equalsIgnoreCase(trimmed))
         return false;
 
-    return true;
+    return result >= -15.0f && result <= 15.0f; // Arbitrary large range for coordinates
 }
 
 
@@ -1549,6 +1549,10 @@ void EphysMetadataGeneratorCanvas::mouseDown(const MouseEvent& event)
         });
         headerMenu.showMenuAsync (PopupMenu::Options().withPreferredPopupDirection(PopupMenu::Options::PopupDirection::downwards));
     }
+    else if (hasKeyboardFocus(true))
+    {
+        giveAwayKeyboardFocus();
+    }
 }
 
 // XML serialization methods
@@ -1629,16 +1633,26 @@ void EphysMetadataGeneratorCanvas::loadCustomParametersFromXml(XmlElement* xml)
                 probe.probe = probeElement->getStringAttribute("probe", "");
                 probe.serialNumber = probeElement->getStringAttribute("serialNumber", "");
                 probe.manipulator = probeElement->getStringAttribute("manipulator", "62219");
-                probe.arcAngle = probeElement->getStringAttribute("arcAngle", "0");
-                probe.moduleAngle = probeElement->getStringAttribute("moduleAngle", "0");
-                probe.rotation = probeElement->getStringAttribute("rotation", "0");
+                
+                String arcAngle = probeElement->getStringAttribute("arcAngle", "0");
+                probe.arcAngle = isValidAngleInput(arcAngle) ? arcAngle : "0";
+                String moduleAngle = probeElement->getStringAttribute("moduleAngle", "0");
+                probe.moduleAngle = isValidAngleInput(moduleAngle) ? moduleAngle : "0";
+                String rotation = probeElement->getStringAttribute("rotation", "0");
+                probe.rotation = isValidAngleInput(rotation) ? rotation : "0";
+
                 probe.x = probeElement->getStringAttribute("x", "0.0");
                 probe.y = probeElement->getStringAttribute("y", "0.0");
                 probe.z = probeElement->getStringAttribute("z", "0.0");
                 probe.surface = probeElement->getStringAttribute("surface", "0.0");
-                probe.bregmaX = probeElement->getStringAttribute("bregmaX", "0.0");
-                probe.bregmaY = probeElement->getStringAttribute("bregmaY", "0.0");
-                probe.bregmaZ = probeElement->getStringAttribute("bregmaZ", "0.0");
+
+                String bregmaX = probeElement->getStringAttribute("bregmaX", "0.0");
+                probe.bregmaX = isValidCoordinateInput(bregmaX) ? bregmaX : "0.0";
+                String bregmaY = probeElement->getStringAttribute("bregmaY", "0.0");
+                probe.bregmaY = isValidCoordinateInput(bregmaY) ? bregmaY : "0.0";
+                String bregmaZ = probeElement->getStringAttribute("bregmaZ", "0.0");
+                probe.bregmaZ = isValidCoordinateInput(bregmaZ) ? bregmaZ : "0.0";
+
                 probe.targetStructure = probeElement->getStringAttribute("targetStructure", "");
                 probe.dye = probeElement->getStringAttribute("dye", "CM-DiI");
                 probe.notes = probeElement->getStringAttribute("notes", "");
