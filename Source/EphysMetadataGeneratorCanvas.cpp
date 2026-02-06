@@ -231,6 +231,8 @@ void EphysMetadataGeneratorCanvas::updateSettings()
                     streamName = streamName.dropLastCharacters (3);
                 else if (streamName.contains("-LFP"))
                     streamName = streamName.dropLastCharacters (4);
+                else if (streamName.contains("-1") || streamName.contains("-2") || streamName.contains("-3") || streamName.contains("-4"))
+                    streamName = streamName.dropLastCharacters (2);
 
                 neuropixelsProbeNames.add(streamName);
                 
