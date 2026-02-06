@@ -93,9 +93,9 @@ EphysMetadataGeneratorCanvas::EphysMetadataGeneratorCanvas(EphysMetadataGenerato
     metadataTable->getHeader().addColumn("Y", 7, 60, 60, 60, TableHeaderComponent::visible);
     metadataTable->getHeader().addColumn("Z", 8, 60, 60, 60, TableHeaderComponent::visible);
     metadataTable->getHeader().addColumn("Surface", 9, 100, 100, 100, TableHeaderComponent::visible);
-    metadataTable->getHeader().addColumn("Pragma X", 10, 70, 70, 70, 0);
-    metadataTable->getHeader().addColumn("Pragma Y", 11, 70, 70, 70, 0);
-    metadataTable->getHeader().addColumn("Pragma Z", 12, 70, 70, 70, 0);
+    metadataTable->getHeader().addColumn("Bregma X", 10, 70, 70, 70, TableHeaderComponent::visible);
+    metadataTable->getHeader().addColumn("Bregma Y", 11, 70, 70, 70, TableHeaderComponent::visible);
+    metadataTable->getHeader().addColumn("Bregma Z", 12, 70, 70, 70, TableHeaderComponent::visible);
     metadataTable->getHeader().addColumn("Target Structure", 13, 120, 120, 120, TableHeaderComponent::visible);
     metadataTable->getHeader().addColumn("Dye", 14, 80, 80, 80, TableHeaderComponent::visible);
     metadataTable->getHeader().addColumn("Notes", 15, 150, 100, 400, TableHeaderComponent::visible | TableHeaderComponent::resizable);
@@ -280,9 +280,9 @@ void EphysMetadataGeneratorCanvas::updateSettings()
             newProbe.y = "0.0";
             newProbe.z = "0.0";
             newProbe.surface = "0.0";
-            newProbe.pragmaX = "0.0";
-            newProbe.pragmaY = "0.0";
-            newProbe.pragmaZ = "0.0";
+            newProbe.bregmaX = "0.0";
+            newProbe.bregmaY = "0.0";
+            newProbe.bregmaZ = "0.0";
             newProbe.targetStructure = "";
             newProbe.dye = "CM-DiI";
             newProbe.notes = "";
@@ -561,53 +561,53 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
         return button;
     }
     
-    // TextEditor for the Pragma coordinate columns (Pragma X=10, Pragma Y=11, Pragma Z=12)
+    // TextEditor for the Bregma coordinate columns (Bregma X=10, Bregma Y=11, Bregma Z=12)
     if (columnId >= 10 && columnId <= 12)
     {
-        Label* pragmaEditor = dynamic_cast<Label*>(existingComponentToUpdate);
+        Label* bregmaEditor = dynamic_cast<Label*>(existingComponentToUpdate);
         
-        if (pragmaEditor == nullptr)
+        if (bregmaEditor == nullptr)
         {
-            pragmaEditor = new Label();
-            pragmaEditor->setEditable(true);
-            pragmaEditor->setJustificationType(Justification::centred);
+            bregmaEditor = new Label();
+            bregmaEditor->setEditable(true);
+            bregmaEditor->setJustificationType(Justification::centred);
 
             String fieldName;
             if (columnId == 10)
-                fieldName = "PragmaXEditor_" + String(rowNumber);
+                fieldName = "BregmaXEditor_" + String(rowNumber);
             else if (columnId == 11)
-                fieldName = "PragmaYEditor_" + String(rowNumber);
+                fieldName = "BregmaYEditor_" + String(rowNumber);
             else
-                fieldName = "PragmaZEditor_" + String(rowNumber);
+                fieldName = "BregmaZEditor_" + String(rowNumber);
 
-            pragmaEditor->setName(fieldName);
+            bregmaEditor->setName(fieldName);
 
-            pragmaEditor->onTextChange = [this, pragmaEditor, rowNumber, columnId]()
+            bregmaEditor->onTextChange = [this, bregmaEditor, rowNumber, columnId]()
             {
                 if (rowNumber < probeMetadata.size())
                 {
-                    String newText = pragmaEditor->getText();
+                    String newText = bregmaEditor->getText();
 
                     if (!isValidCoordinateInput(newText))
                     {
                         // Revert to previous valid value
                         String validValue;
-                        if (columnId == 10) validValue = probeMetadata[rowNumber].pragmaX;
-                        else if (columnId == 11) validValue = probeMetadata[rowNumber].pragmaY;
-                        else if (columnId == 12) validValue = probeMetadata[rowNumber].pragmaZ;
+                        if (columnId == 10) validValue = probeMetadata[rowNumber].bregmaX;
+                        else if (columnId == 11) validValue = probeMetadata[rowNumber].bregmaY;
+                        else if (columnId == 12) validValue = probeMetadata[rowNumber].bregmaZ;
 
-                        pragmaEditor->setText(validValue, dontSendNotification);
+                        bregmaEditor->setText(validValue, dontSendNotification);
                         return;
                     }
 
                     ProbeMetadata& metadata = probeMetadata.getReference(rowNumber);
 
                     if (columnId == 10)
-                        metadata.pragmaX = newText;
+                        metadata.bregmaX = newText;
                     else if (columnId == 11)
-                        metadata.pragmaY = newText;
+                        metadata.bregmaY = newText;
                     else
-                        metadata.pragmaZ = newText;
+                        metadata.bregmaZ = newText;
                 }
             };
         }
@@ -616,16 +616,16 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
         {
             String currentValue;
             if (columnId == 10)
-                currentValue = probeMetadata[rowNumber].pragmaX;
+                currentValue = probeMetadata[rowNumber].bregmaX;
             else if (columnId == 11)
-                currentValue = probeMetadata[rowNumber].pragmaY;
+                currentValue = probeMetadata[rowNumber].bregmaY;
             else
-                currentValue = probeMetadata[rowNumber].pragmaZ;
+                currentValue = probeMetadata[rowNumber].bregmaZ;
 
-            pragmaEditor->setText(currentValue, dontSendNotification);
+            bregmaEditor->setText(currentValue, dontSendNotification);
         }
 
-        return pragmaEditor;
+        return bregmaEditor;
     }
 
     // AutoCompleteTextEditor for the Target Structure column (column 13)
@@ -1164,9 +1164,9 @@ void EphysMetadataGeneratorCanvas::buttonClicked(Button* buttonThatWasClicked)
             newProbe.y = "0.0";
             newProbe.z = "0.0";
             newProbe.surface = "0.0";
-            newProbe.pragmaX = "0.0";
-            newProbe.pragmaY = "0.0";
-            newProbe.pragmaZ = "0.0";
+            newProbe.bregmaX = "0.0";
+            newProbe.bregmaY = "0.0";
+            newProbe.bregmaZ = "0.0";
             newProbe.targetStructure = "";
             newProbe.dye = "CM-DiI";
             newProbe.notes = "";
@@ -1541,7 +1541,7 @@ void EphysMetadataGeneratorCanvas::mouseDown(const MouseEvent& event)
     {
         bool currentlyVisible = metadataTable->getHeader().isColumnVisible(10);
         PopupMenu headerMenu;
-        headerMenu.addItem("Show Pragma Coordinates", true, currentlyVisible, [this, currentlyVisible]()
+        headerMenu.addItem("Show Bregma Coordinates", true, currentlyVisible, [this, currentlyVisible]()
         {
             metadataTable->getHeader().setColumnVisible(10, !currentlyVisible);
             metadataTable->getHeader().setColumnVisible(11, !currentlyVisible);
@@ -1574,9 +1574,9 @@ void EphysMetadataGeneratorCanvas::saveCustomParametersToXml(XmlElement* xml)
         probeElement->setAttribute("y", probe.y);
         probeElement->setAttribute("z", probe.z);
         probeElement->setAttribute("surface", probe.surface);
-        probeElement->setAttribute("pragmaX", probe.pragmaX);
-        probeElement->setAttribute("pragmaY", probe.pragmaY);
-        probeElement->setAttribute("pragmaZ", probe.pragmaZ);
+        probeElement->setAttribute("bregmaX", probe.bregmaX);
+        probeElement->setAttribute("bregmaY", probe.bregmaY);
+        probeElement->setAttribute("bregmaZ", probe.bregmaZ);
         probeElement->setAttribute("targetStructure", probe.targetStructure);
         probeElement->setAttribute("dye", probe.dye);
         probeElement->setAttribute("notes", probe.notes);
@@ -1636,9 +1636,9 @@ void EphysMetadataGeneratorCanvas::loadCustomParametersFromXml(XmlElement* xml)
                 probe.y = probeElement->getStringAttribute("y", "0.0");
                 probe.z = probeElement->getStringAttribute("z", "0.0");
                 probe.surface = probeElement->getStringAttribute("surface", "0.0");
-                probe.pragmaX = probeElement->getStringAttribute("pragmaX", "0.0");
-                probe.pragmaY = probeElement->getStringAttribute("pragmaY", "0.0");
-                probe.pragmaZ = probeElement->getStringAttribute("pragmaZ", "0.0");
+                probe.bregmaX = probeElement->getStringAttribute("bregmaX", "0.0");
+                probe.bregmaY = probeElement->getStringAttribute("bregmaY", "0.0");
+                probe.bregmaZ = probeElement->getStringAttribute("bregmaZ", "0.0");
                 probe.targetStructure = probeElement->getStringAttribute("targetStructure", "");
                 probe.dye = probeElement->getStringAttribute("dye", "CM-DiI");
                 probe.notes = probeElement->getStringAttribute("notes", "");

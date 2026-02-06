@@ -100,9 +100,9 @@ private:
         String y;
         String z;
         String surface;
-        String pragmaX;
-        String pragmaY;
-        String pragmaZ;
+        String bregmaX;
+        String bregmaY;
+        String bregmaZ;
         String targetStructure;
         String dye;
         String notes;
