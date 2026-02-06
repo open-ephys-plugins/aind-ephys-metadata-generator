@@ -1052,8 +1052,54 @@ void EphysMetadataGeneratorCanvas::comboBoxChanged(ComboBox* comboBoxThatHasChan
             }
             else
             {
-                // User selected a valid serial number
-                probeMetadata.getReference(rowNumber).manipulator = selectedText;
+                // User selected a valid serial number, check if it is duplicate and warn if so
+                bool isDuplicate = false;
+                for (int i = 0; i < probeMetadata.size(); ++i)
+                {
+                    if (i != rowNumber && probeMetadata[i].manipulator == selectedText)
+                    {
+                        isDuplicate = true;
+                        break;
+                    }
+                }
+
+                if (isDuplicate)
+                {
+                    AlertWindow::showMessageBoxAsync(
+                        AlertWindow::WarningIcon,
+                        "Duplicate Manipulator",
+                        "The manipulator \"" + selectedText + "\" is already assigned to another probe. Please select a different manipulator.",
+                        "OK"
+                    );
+                    // Revert to previous value
+                    String previousValue = probeMetadata[rowNumber].manipulator;
+                    if (previousValue.isEmpty())
+                    {
+                        comboBoxThatHasChanged->setSelectedId(1); // Select null option
+                    }
+                    else
+                    {
+                        // Find the index of the previous value in the ComboBox and re-select it
+                        bool found = false;
+                        for (int i = 0; i < comboBoxThatHasChanged->getNumItems(); ++i)
+                        {
+                            if (comboBoxThatHasChanged->getItemText(i).startsWith(previousValue))
+                            {
+                                comboBoxThatHasChanged->setSelectedId(i + 1);
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (!found)
+                        {
+                            comboBoxThatHasChanged->setSelectedId(1); // Select null option if previous value not found
+                        }
+                    }
+                }
+                else
+                {
+                    probeMetadata.getReference(rowNumber).manipulator = selectedText;
+                }
             }
             
             LOGD("Manipulator for row ", rowNumber, " changed to: ", probeMetadata[rowNumber].manipulator);
