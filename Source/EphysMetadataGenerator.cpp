@@ -25,9 +25,6 @@
 
 #include "EphysMetadataGeneratorEditor.h"
 
-#include "Acquisition.h"
-
-
 AudioProcessorEditor* EphysMetadataGenerator::createEditor()
 {
     editor = std::make_unique<EphysMetadataGeneratorEditor> (this);
@@ -43,7 +40,7 @@ void EphysMetadataGenerator::updateSettings()
 void EphysMetadataGenerator::startRecording()
 {
     EphysMetadataGeneratorEditor* thisEditor = dynamic_cast<EphysMetadataGeneratorEditor*> (getEditor());
-    acquisition = thisEditor->getLatestMetadata();
+    dataStreamMetadata = thisEditor->getLatestMetadata();
 }
 
 void EphysMetadataGenerator::stopRecording()
@@ -66,13 +63,15 @@ void EphysMetadataGenerator::stopRecording()
     int experimentNum = CoreServices::RecordNode::getExperimentNumber (firstRecNodeId);
     int recordingNum = CoreServices::RecordNode::getRecordingNumber (firstRecNodeId);
 
-    String filename = String ("ephys_acquisition_" + String (experimentNum) + "_" + String (recordingNum) + ".json");
+    String filename = String ("ephys_datastream_" + String (experimentNum) + "_" + String (recordingNum) + ".json");
     
-    // Save the metadata file in the recording directory
+    // Save the data streams file in the recording directory
     File metadataFile = recordingDirectory.getChildFile (filename);
     
-    // Create the metadata object and save it
-    acquisition.setEndTime (Time::getCurrentTime());
-    acquisition.writeToJSON(metadataFile);
+    // Set end time for all streams and write to JSON
+    Time endTime = Time::getCurrentTime();
+    dataStreamMetadata.stream_end_time = endTime;
+    
+    dataStreamMetadata.writeToJSON (metadataFile);
     
 }

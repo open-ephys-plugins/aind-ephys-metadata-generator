@@ -21,12 +21,12 @@
 
 */
 
-#include "Acquisition.h"
+#include "Metadata.h"
 
 namespace Metadata
 {
 
-bool Acquisition::writeToJSON(File file) const
+bool DataStream::writeToJSON(File file) const
 {
     try
     {
@@ -45,141 +45,55 @@ bool Acquisition::writeToJSON(File file) const
     }
 }
 
-var Acquisition::toJSON() const
+var DataStream::toJSON() const
 {
     DynamicObject* jsonObj = new DynamicObject();
-    
-    // Basic fields
     jsonObj->setProperty("object_type", object_type);
-    jsonObj->setProperty("describedBy", describedBy);
-    jsonObj->setProperty("schema_version", schema_version);
-    jsonObj->setProperty("subject_id", subject_id);
-    
-    // Handle null specimen_id
-    if (specimen_id.isEmpty())
-        jsonObj->setProperty("specimen_id", var());
-    else
-        jsonObj->setProperty("specimen_id", specimen_id);
-    
-    jsonObj->setProperty("acquisition_start_time", acquisition_start_time.toISO8601(true));
-    jsonObj->setProperty("acquisition_end_time", acquisition_end_time.toISO8601(true));
-
-    var experimentersArray;
-    for (int i = 0; i < experimenters.size(); ++i)
-    {
-        experimentersArray.append(experimenters[i]);
-    }
-    jsonObj->setProperty("experimenters", experimentersArray);
-    
-    // Handle null protocol_id
-    if (protocol_id.isEmpty())
-        jsonObj->setProperty("protocol_id", var());
-    else
-        jsonObj->setProperty("protocol_id", protocol_id);
-    
-    var ethics_review_array;
-    for (int i = 0; i < ethics_review_id.size(); ++i)
-    {
-        ethics_review_array.append(ethics_review_id[i]);
-    }
-    jsonObj->setProperty("ethics_review_id", ethics_review_array);
-    
-    jsonObj->setProperty("instrument_id", instrument_id);
-    jsonObj->setProperty("acquisition_type", acquisition_type);
-    
-    // Handle null notes
-    if (notes.isEmpty())
-        jsonObj->setProperty("notes", var());
-    else
-        jsonObj->setProperty("notes", notes);
-    
-    // Coordinate system as complex object
-    jsonObj->setProperty("coordinate_system", coordinateSystemObjectToJSON(coordinate_system));
-    
-    // Arrays - ensure they are empty arrays, not null
-    Array<var> calibrationsArrayData;
-    for (int i = 0; i < calibrations.size(); ++i)
-    {
-        calibrationsArrayData.add(calibrations[i]);
-    }
-    jsonObj->setProperty("calibrations", var(calibrationsArrayData));
-
-    Array<var> maintenanceArrayData;
-    for (int i = 0; i < maintenance.size(); ++i)
-    {
-        maintenanceArrayData.add(maintenance[i]);
-    }
-    jsonObj->setProperty("maintenance", var(maintenanceArrayData));
-    
-    // Data streams array - ensure it's empty array, not null
-    Array<var> dataStreamsArrayData;
-    for (int i = 0; i < data_streams.size(); ++i)
-    {
-        dataStreamsArrayData.add(dataStreamToJSON(data_streams[i]));
-    }
-    jsonObj->setProperty("data_streams", var(dataStreamsArrayData));
-    
-    // Stimulus epochs array - ensure it's empty array, not null
-    Array<var> stimulusEpochsArrayData;
-    for (int i = 0; i < stimulus_epochs.size(); ++i)
-    {
-        stimulusEpochsArrayData.add(stimulus_epochs[i]);
-    }
-    jsonObj->setProperty("stimulus_epochs", var(stimulusEpochsArrayData));
-    jsonObj->setProperty("subject_details", subjectDetailsToJSON (subject_details));
-    
-    return var(jsonObj);
-}
-
-var Acquisition::dataStreamToJSON(const DataStream& stream)
-{
-    DynamicObject* jsonObj = new DynamicObject();
-    jsonObj->setProperty("object_type", stream.object_type);
-    jsonObj->setProperty("stream_start_time", stream.stream_start_time.toISO8601(true));
-    jsonObj->setProperty("stream_end_time", stream.stream_end_time.toISO8601(true));
+    jsonObj->setProperty("stream_start_time", stream_start_time.toISO8601(true));
+    jsonObj->setProperty("stream_end_time", stream_end_time.toISO8601(true));
     
     // Modalities array
     var modalitiesArray;
-    for (int i = 0; i < stream.modalities.size(); ++i)
+    for (int i = 0; i < modalities.size(); ++i)
     {
-        modalitiesArray.append(modalityToJSON(stream.modalities[i]));
+        modalitiesArray.append(modalityToJSON(modalities[i]));
     }
     jsonObj->setProperty("modalities", modalitiesArray);
     
     // Handle null code
-    jsonObj->setProperty("code", stream.code);
+    jsonObj->setProperty("code", code);
     
     // Handle null notes
-    jsonObj->setProperty("notes", stream.notes);
+    jsonObj->setProperty("notes", notes);
     
     // Active devices array
     var activeDevicesArray;
-    for (int i = 0; i < stream.active_devices.size(); ++i)
+    for (int i = 0; i < active_devices.size(); ++i)
     {
-        activeDevicesArray.append(stream.active_devices[i]);
+        activeDevicesArray.append(active_devices[i]);
     }
     jsonObj->setProperty("active_devices", activeDevicesArray);
     
     // Configurations array
     var configurationsArray;
-    for (int i = 0; i < stream.configurations.size(); ++i)
+    for (int i = 0; i < configurations.size(); ++i)
     {
-        configurationsArray.append(ephysAssemblyConfigToJSON(stream.configurations[i]));
+        configurationsArray.append(ephysAssemblyConfigToJSON(configurations[i]));
     }
     jsonObj->setProperty("configurations", configurationsArray);
     
     // Connections array - ensure it's empty array, not null
     Array<var> connectionsArrayData;
-    for (int i = 0; i < stream.connections.size(); ++i)
+    for (int i = 0; i < connections.size(); ++i)
     {
-        connectionsArrayData.add(stream.connections[i]);
+        connectionsArrayData.add(connections[i]);
     }
     jsonObj->setProperty("connections", var(connectionsArrayData));
     
     return var(jsonObj);
 }
 
-String Acquisition::coordinateSystemToString(CoordinateSystem system)
+String DataStream::coordinateSystemToString(CoordinateSystem system)
 {
     switch (system)
     {
@@ -192,7 +106,7 @@ String Acquisition::coordinateSystemToString(CoordinateSystem system)
     }
 }
 
-var Acquisition::coordinateSystemObjectToJSON(const CoordinateSystemObject& coordSystem)
+var DataStream::coordinateSystemObjectToJSON(const CoordinateSystemObject& coordSystem)
 {
     DynamicObject* jsonObj = new DynamicObject();
     jsonObj->setProperty("object_type", coordSystem.object_type);
@@ -211,7 +125,7 @@ var Acquisition::coordinateSystemObjectToJSON(const CoordinateSystemObject& coor
     return var(jsonObj);
 }
 
-var Acquisition::axisToJSON(const Axis& axis)
+var DataStream::axisToJSON(const Axis& axis)
 {
     DynamicObject* jsonObj = new DynamicObject();
     jsonObj->setProperty("object_type", axis.object_type);
@@ -220,21 +134,7 @@ var Acquisition::axisToJSON(const Axis& axis)
     return var(jsonObj);
 }
 
-var Acquisition::subjectDetailsToJSON(const SubjectDetails& details)
-{
-    DynamicObject* jsonObj = new DynamicObject();
-    jsonObj->setProperty("object_type", details.object_type);
-    jsonObj->setProperty("animal_weight_prior", details.animal_weight_prior);
-    jsonObj->setProperty("animal_weight_post", details.animal_weight_post);
-    jsonObj->setProperty("weight_unit", details.weight_unit);
-    jsonObj->setProperty("anaesthesia", details.anaesthesia);
-    jsonObj->setProperty("mouse_platform_name", details.mouse_platform_name);
-    jsonObj->setProperty("reward_consumed_total", details.reward_consumed_total);
-    jsonObj->setProperty("reward_consumed_unit", details.reward_consumed_unit);
-    return var(jsonObj);
-}
-
-var Acquisition::translationToJSON(const Translation& translation)
+var DataStream::translationToJSON(const Translation& translation)
 {
     DynamicObject* jsonObj = new DynamicObject();
     jsonObj->setProperty("object_type", translation.object_type);
@@ -249,7 +149,7 @@ var Acquisition::translationToJSON(const Translation& translation)
     return var(jsonObj);
 }
 
-var Acquisition::rotationToJSON(const Rotation& rotation)
+var DataStream::rotationToJSON(const Rotation& rotation)
 {
     DynamicObject* jsonObj = new DynamicObject();
     jsonObj->setProperty("object_type", rotation.object_type);
@@ -265,7 +165,7 @@ var Acquisition::rotationToJSON(const Rotation& rotation)
     return var(jsonObj);
 }
 
-var Acquisition::modalityToJSON(const Modality& modality)
+var DataStream::modalityToJSON(const Modality& modality)
 {
     DynamicObject* jsonObj = new DynamicObject();
     jsonObj->setProperty("name", modality.name);
@@ -273,7 +173,7 @@ var Acquisition::modalityToJSON(const Modality& modality)
     return var(jsonObj);
 }
 
-var Acquisition::probeConfigToJSON(const ProbeConfig& probe)
+var DataStream::probeConfigToJSON(const ProbeConfig& probe)
 {
     DynamicObject* jsonObj = new DynamicObject();
     jsonObj->setProperty("object_type", probe.object_type);
@@ -302,23 +202,23 @@ var Acquisition::probeConfigToJSON(const ProbeConfig& probe)
 
     String notesForExport = probe.notes;
     if (notesForExport.isNotEmpty())
-        notesForExport += "\n";
+        notesForExport += "; ";
     notesForExport += "Hemisphere: ";
     notesForExport += probe.hemisphere.isEmpty() ? "None" : probe.hemisphere;
-    notesForExport += "\nHole #: ";
+    notesForExport += "; Hole #: ";
     notesForExport += probe.implant_hole_number.isEmpty() ? "N/A" : probe.implant_hole_number;
-    notesForExport += "\nInserted: ";
+    notesForExport += "; Inserted: ";
     notesForExport += (probe.inserted ? "true" : "false");
-    notesForExport += "\nOn Target: ";
+    notesForExport += "; On Target: ";
     notesForExport += (probe.on_target ? "true" : "false");
-    notesForExport += "\nRecorded: ";
+    notesForExport += "; Recorded: ";
     notesForExport += (probe.recorded ? "true" : "false");
     jsonObj->setProperty("notes", notesForExport);
     
     return var(jsonObj);
 }
 
-var Acquisition::manipulatorConfigToJSON(const ManipulatorConfig& manipulator)
+var DataStream::manipulatorConfigToJSON(const ManipulatorConfig& manipulator)
 {
     DynamicObject* jsonObj = new DynamicObject();
     jsonObj->setProperty("object_type", manipulator.object_type);
@@ -328,7 +228,7 @@ var Acquisition::manipulatorConfigToJSON(const ManipulatorConfig& manipulator)
     return var(jsonObj);
 }
 
-var Acquisition::misModuleConfigToJSON(const MISModuleConfig& module)
+var DataStream::misModuleConfigToJSON(const MISModuleConfig& module)
 {
     DynamicObject* jsonObj = new DynamicObject();
     jsonObj->setProperty("object_type", module.object_type);
@@ -340,7 +240,7 @@ var Acquisition::misModuleConfigToJSON(const MISModuleConfig& module)
     return var(jsonObj);
 }
 
-var Acquisition::ephysAssemblyConfigToJSON(const EphysAssemblyConfig& assembly)
+var DataStream::ephysAssemblyConfigToJSON(const EphysAssemblyConfig& assembly)
 {
     DynamicObject* jsonObj = new DynamicObject();
     jsonObj->setProperty("object_type", assembly.object_type);

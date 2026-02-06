@@ -37,7 +37,7 @@ Visualizer* EphysMetadataGeneratorEditor::createNewCanvas()
     ;
 }
 
-Metadata::Acquisition EphysMetadataGeneratorEditor::getLatestMetadata()
+Metadata::DataStream EphysMetadataGeneratorEditor::getLatestMetadata()
 {
     if (canvas != nullptr)
     {
@@ -46,5 +46,5 @@ Metadata::Acquisition EphysMetadataGeneratorEditor::getLatestMetadata()
         return ephysMetadataGeneratorCanvas->getLatestMetadata();
     }
 
-    return Metadata::Acquisition(); // Return an empty acquisition if no canvas is available
+    return Metadata::DataStream(); // Return an empty array if no canvas is available
 }

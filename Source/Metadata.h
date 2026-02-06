@@ -104,34 +104,6 @@ struct Modality
     String abbreviation;
 };
 
-struct SubjectDetails
-{
-    /** Object type */
-    String object_type = "Acquisition subject details";
-    
-    /** Animal weight prior */
-    var animal_weight_prior; // can be null
-    
-    /** Animal weight post */
-    var animal_weight_post; // can be null
-    
-    /** Weight unit */
-    String weight_unit = "gram";
-    
-    /** Anaesthesia */
-    var anaesthesia; // can be null
-    
-    /** Mouse platform name */
-    String mouse_platform_name;
-    
-    /** Reward consumed total */
-    var reward_consumed_total; // can be null
-    
-    /** Reward consumed unit */
-    var reward_consumed_unit; // can be null
-};
-
-
 struct ProbeConfig
 {
     /** Object type */
@@ -259,77 +231,6 @@ struct DataStream
     
     /** Connections */
     Array<var> connections; // Empty array in example
-};
-
-
-struct Acquisition
-{
-    /** Object type */
-    String object_type = "Acquisition";
-
-    /** Described by */
-    String describedBy = "https://raw.githubusercontent.com/AllenNeuralDynamics/aind-data-schema/main/src/aind_data_schema/core/acquisition.py";
-
-    /** Schema version */
-    String schema_version = SCHEMA_VERSION;
-
-    /** Subject ID*/
-    String subject_id;
-
-    /** Specimen ID*/
-    String specimen_id;
-    
-    /** Start time **/
-    Time acquisition_start_time;
-    
-    /** End time */
-    Time acquisition_end_time;
-    
-    /** Experimenters */
-    StringArray experimenters;
-
-    /** Protocol ID*/
-    String protocol_id;
-
-    /** Ethics review ID */
-    StringArray ethics_review_id;
-    
-    /** Instrument ID*/
-    String instrument_id;
-    
-    /** Acquisition type */
-    String acquisition_type;
-    
-    /** Notes */
-    String notes;
-
-    /** Coordinate system*/
-    CoordinateSystemObject coordinate_system;
-    
-    /** Calibrations */
-    Array<var> calibrations; // Empty array in example
-    
-    /** Maintenance */
-    Array<var> maintenance; // Empty array in example
-    
-    /** Data streams*/
-    Array<DataStream> data_streams;
-    
-    /** Stimulus epochs */
-    Array<var> stimulus_epochs; // Empty array in example
-    
-    /** Subject details */
-    SubjectDetails subject_details;
-    
-    /** Sets end time for all streams */
-    void setEndTime (const Time& endTime)
-    {
-        this->acquisition_end_time = endTime;
-        for (Metadata::DataStream stream : data_streams)
-        {
-            stream.stream_start_time = endTime;
-        }
-    }
 
     /**
      * Write all acquisition data to a JSON file
@@ -344,13 +245,6 @@ private:
      * @return var object containing all acquisition data
      */
     var toJSON() const;
-
-    /**
-     * Convert a DataStream struct to JSON
-     * @param stream The data stream to convert
-     * @return var object containing stream data
-     */
-    static var dataStreamToJSON(const DataStream& stream);
     
     /**
      * Convert CoordinateSystem enum to string
@@ -372,14 +266,7 @@ private:
      * @return var object containing axis data
      */
     static var axisToJSON(const Axis& axis);
-    
-    /**
-     * Convert a SubjectDetails struct to JSON
-     * @param details The subject details to convert
-     * @return var object containing subject details data
-     */
-    static var subjectDetailsToJSON(const SubjectDetails& details);
-    
+
     /**
      * Convert a Translation struct to JSON
      * @param translation The translation to convert

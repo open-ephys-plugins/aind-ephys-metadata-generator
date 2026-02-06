@@ -27,7 +27,7 @@
 
 #include <ProcessorHeaders.h>
 
-#include "Acquisition.h"
+#include "Metadata.h"
 
 /**
     A plugin that includes a canvas for displaying incoming data
@@ -65,8 +65,8 @@ public:
 
 private:
     
-    /** Holds metadata for this acquisition */
-    Metadata::Acquisition acquisition;
+    /** Holds data stream metadata for this acquisition */
+    Metadata::DataStream dataStreamMetadata;
     
     /** Generates an assertion if this class leaks */
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (EphysMetadataGenerator);

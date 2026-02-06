@@ -27,7 +27,7 @@
 #include <VisualizerWindowHeaders.h>
 #include "TableComponents.h"
 #include "StageListener.h"
-#include "Acquisition.h"
+#include "Metadata.h"
 
 class EphysMetadataGenerator;
 
@@ -78,8 +78,8 @@ public:
     Component* refreshComponentForCell(int rowNumber, int columnId, bool isRowSelected, Component* existingComponentToUpdate) override;
     int getColumnAutoSizeWidth(int columnId) override;
 
-    /** Fills Acquisition metadata object and returns */
-    Metadata::Acquisition getLatestMetadata();
+    /** Generates data streams array and returns */
+    Metadata::DataStream getLatestMetadata();
 
 private:
     /** Pointer to the processor class */

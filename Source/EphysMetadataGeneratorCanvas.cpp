@@ -1785,29 +1785,9 @@ void EphysMetadataGeneratorCanvas::updateStageListenerEndpoint()
     }
 }
 
-Metadata::Acquisition EphysMetadataGeneratorCanvas::getLatestMetadata()
+Metadata::DataStream EphysMetadataGeneratorCanvas::getLatestMetadata()
 {
-
     Time start_time = Time::getCurrentTime();
-
-    Metadata::Acquisition acquisition;
-
-    acquisition.subject_id = "Subject ID";
-    acquisition.acquisition_start_time = start_time;
-
-    acquisition.experimenters.add ("Default Experimenter");
-    acquisition.ethics_review_id.add ("2414");
-    acquisition.instrument_id = "323_EPHSY1";
-    acquisition.acquisition_type = "Extracellular ephys experiment";
-    
-    acquisition.coordinate_system.name = "BREGMA_ARID";
-    acquisition.coordinate_system.origin = "Bregma";
-    acquisition.coordinate_system.axes.add (Metadata::Axis({"Axis", "AP", "Posterior_to_anterior"}));
-    acquisition.coordinate_system.axes.add (Metadata::Axis ({ "Axis", "ML", "Left_to_right" }));
-    acquisition.coordinate_system.axes.add (Metadata::Axis ({ "Axis", "SI", "Superior_to_inferior" }));
-    acquisition.coordinate_system.axes.add (Metadata::Axis ({ "Axis", "Depth", "Up_to_down" }));
-
-    acquisition.subject_details = Metadata::SubjectDetails();
 
     Metadata::DataStream stream;
     stream.stream_start_time = start_time;
@@ -1868,9 +1848,5 @@ Metadata::Acquisition EphysMetadataGeneratorCanvas::getLatestMetadata()
         stream.configurations.add (ephysAssemblyConfig);
     }
 
-    acquisition.data_streams.add (stream);
-
-    return acquisition;
-
-
+    return stream;
 }
