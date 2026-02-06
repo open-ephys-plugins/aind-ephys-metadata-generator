@@ -192,10 +192,15 @@ var DataStream::probeConfigToJSON(const ProbeConfig& probe)
     jsonObj->setProperty("coordinate_system", coordinateSystemObjectToJSON(probe.coordinate_system));
     
     Array<var> transformArrayData;
-    for (int i = 0; i < probe.transform.size(); ++i)
+    if (probe.transform_translation.translation.size() > 0)
     {
-        transformArrayData.add(probe.transform[i]);
+        transformArrayData.add(translationToJSON(probe.transform_translation));
     }
+    if (probe.transform_rotation.angles.size() > 0)
+    {
+        transformArrayData.add(rotationToJSON(probe.transform_rotation));
+    }
+
     jsonObj->setProperty("transform", var(transformArrayData));
     
     jsonObj->setProperty("dye", probe.dye);

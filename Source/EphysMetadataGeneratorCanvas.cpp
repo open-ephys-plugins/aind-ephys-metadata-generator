@@ -1833,6 +1833,12 @@ Metadata::DataStream EphysMetadataGeneratorCanvas::getLatestMetadata()
         probeConfig.coordinate_system.axes.add (Metadata::Axis ({ "Axis", "X", "Left_to_right" }));
         probeConfig.coordinate_system.axes.add (Metadata::Axis ({ "Axis", "Y", "Back_to_front" }));
         probeConfig.coordinate_system.axes.add (Metadata::Axis ({ "Axis", "Z", "Up_to_down" }));
+        
+        probeConfig.transform_translation.translation = { probeMetadata[i].bregmaX.getFloatValue(),
+                                                         probeMetadata[i].bregmaY.getFloatValue(),
+                                                         probeMetadata[i].bregmaZ.getFloatValue(),
+                                                         probeMetadata[i].surface.getFloatValue() - probeMetadata[i].z.getFloatValue() };
+
         probeConfig.dye = probeMetadata[i].dye;
         probeConfig.notes = probeMetadata[i].notes;
         probeConfig.hemisphere = probeMetadata[i].hemisphere;

@@ -125,7 +125,8 @@ struct ProbeConfig
     CoordinateSystemObject coordinate_system;
     
     /** Transform */
-    Array<var> transform; // Array of Translation and Rotation objects
+    Translation transform_translation; // Translation part of the transform
+    Rotation transform_rotation; // Rotation part of the transform
     
     /** Dye */
     String dye;
