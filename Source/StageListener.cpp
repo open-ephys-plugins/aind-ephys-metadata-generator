@@ -213,7 +213,7 @@ String StageListener::fetchStagePositions()
             return {};
         }
         
-        LOGD("StageListener: Received response (", response.length(), " chars): ", response.substring(0, 100), "...");
+        //LOGD("StageListener: Received response (", response.length(), " chars): ", response.substring(0, 100), "...");
         return response;
     }
     catch (const std::exception& e)
@@ -261,7 +261,7 @@ Array<StagePosition> StageListener::parseStagePositions(const String& jsonString
 
                             positions.add (StagePosition (serialNumber, stageX, stageY, stageZ));
 
-                            LOGD ("StageListener: Parsed probe - Serial: ", serialNumber, ", X: ", stageX, ", Y: ", stageY, ", Z: ", stageZ);
+                            //LOGD ("StageListener: Parsed probe - Serial: ", serialNumber, ", X: ", stageX, ", Y: ", stageY, ", Z: ", stageZ);
                         }
                     }
                 }
@@ -272,7 +272,7 @@ Array<StagePosition> StageListener::parseStagePositions(const String& jsonString
             }
         }
         
-        LOGD("StageListener: Parsed ", positions.size(), " stage positions");
+        //LOGD("StageListener: Parsed ", positions.size(), " stage positions");
     }
     catch (const std::exception& e)
     {

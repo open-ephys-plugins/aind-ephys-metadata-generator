@@ -112,6 +112,7 @@ private:
         bool onTarget;
         bool recorded;
         bool isManuallyCreated = false;
+        bool surfaceManuallySet = false;
     };
 
     /** Array to hold the probe metadata */
@@ -153,6 +154,24 @@ private:
     
     /** Button to add new rows to the table */
     std::unique_ptr<TextButton> addRowButton;
+
+    /** Custom button that supports right-click for manual surface depth entry */
+    class SurfaceButton : public TextButton
+    {
+    public:
+        std::function<void(SurfaceButton*)> onRightClick;
+
+        void mouseDown (const MouseEvent& event) override
+        {
+            if (event.mods.isPopupMenu())
+            {
+                if (onRightClick)
+                    onRightClick (this);
+                return;
+            }
+            TextButton::mouseDown (event);
+        }
+    };
 
     class CustomDeviceInputComponent : public Component
     {

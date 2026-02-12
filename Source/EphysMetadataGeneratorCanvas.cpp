@@ -236,7 +236,7 @@ void EphysMetadataGeneratorCanvas::updateSettings()
 
                 neuropixelsProbeNames.add(streamName);
                 
-                LOGD("Found Neuropixels stream: ", streamName);
+                //LOGD("Found Neuropixels stream: ", streamName);
                 addedSerialNumbers.add(serialNumber);
             }
         }
@@ -296,7 +296,7 @@ void EphysMetadataGeneratorCanvas::updateSettings()
             newProbe.isManuallyCreated = false;
             
             updatedMetadata.add(newProbe);
-            LOGD("Created new metadata for probe: ", probeName);
+            // LOGD("Created new metadata for probe: ", probeName);
         }
 
         maxStreamNameWidth = jmax(maxStreamNameWidth, (int)TextLayout::getStringWidth (tableCellFont, probeName) + 20);
@@ -322,7 +322,7 @@ void EphysMetadataGeneratorCanvas::updateSettings()
         metadataTable->autoSizeColumn (1); // Auto-size the Probe column
     }
     
-    LOGD("Updated probe metadata table with ", probeMetadata.size(), " probes");
+    //LOGD("Updated probe metadata table with ", probeMetadata.size(), " probes");
 }
 
 
@@ -497,7 +497,7 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
                     else if (columnId == 4) probeMetadata.getReference(rowNumber).moduleAngle = newText;
                     else if (columnId == 5) probeMetadata.getReference(rowNumber).rotation = newText;
                     
-                    LOGD("Angle value for row ", rowNumber, " column ", columnId, " changed to: ", newText);
+                    //LOGD("Angle value for row ", rowNumber, " column ", columnId, " changed to: ", newText);
                 }
             };
         }
@@ -519,30 +519,85 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
     // Toggle button for the Surface column (column 9)
     if (columnId == 9)
     {
-        TextButton* button = dynamic_cast<TextButton*>(existingComponentToUpdate);
+        SurfaceButton* button = dynamic_cast<SurfaceButton*>(existingComponentToUpdate);
         
         if (button == nullptr)
         {
-            button = new TextButton();
-            button->setName("SurfaceButton_" + String(rowNumber));
+            button = new SurfaceButton();
             button->addListener(this);
         }
         
-        // Set the button appearance based on whether surface has been set from Z
+        // Update name and right-click handler for the current row
+        button->setName("SurfaceButton_" + String(rowNumber));
+        
+        button->onRightClick = [this, rowNumber](SurfaceButton* btn)
+        {
+            if (rowNumber >= probeMetadata.size())
+                return;
+            
+            PopupMenu menu;
+            menu.addItem(1, "Enter Surface Depth...");
+            
+            menu.showMenuAsync(PopupMenu::Options().withTargetComponent(btn),
+                [this, rowNumber](int result)
+                {
+                    if (result == 1 && rowNumber < probeMetadata.size())
+                    {
+                        String currentVal = probeMetadata[rowNumber].surface;
+                        if (currentVal == "0.0" || currentVal.isEmpty())
+                            currentVal = probeMetadata[rowNumber].z;
+                        
+                        AlertWindow w("Enter Surface Depth",
+                                     "Enter the brain surface depth:",
+                                     AlertWindow::QuestionIcon);
+                        w.addTextEditor("surface", currentVal, "Surface Depth:");
+                        w.getTextEditor("surface")->setInputRestrictions(0, "0123456789.-+eE");
+                        w.addButton("OK", 1, KeyPress(KeyPress::returnKey));
+                        w.addButton("Cancel", 0, KeyPress(KeyPress::escapeKey));
+                        
+                        if (w.runModalLoop() == 1)
+                        {
+                            String newSurface = w.getTextEditorContents("surface").trim();
+                            
+                            if (newSurface.isNotEmpty()
+                                && newSurface.containsOnly("0123456789.-+eE")
+                                && rowNumber < probeMetadata.size())
+                            {
+                                probeMetadata.getReference(rowNumber).surface = newSurface;
+                                probeMetadata.getReference(rowNumber).surfaceManuallySet = true;
+                                
+                                metadataTable->updateContent();
+                                metadataTable->repaint();
+                            }
+                        }
+                    }
+                });
+        };
+        
+        // Set the button appearance based on surface state
         if (rowNumber < probeMetadata.size())
         {
             String currentSurface = probeMetadata[rowNumber].surface;
             String currentZ = probeMetadata[rowNumber].z;
+            bool isManuallySet = probeMetadata[rowNumber].surfaceManuallySet;
             
             // Check if surface value matches Z value (indicating it was copied)
-            bool isSurfaceSetFromZ = (currentSurface == currentZ && currentSurface != "0.0" && !currentSurface.isEmpty());
+            bool isSurfaceSetFromZ = !isManuallySet
+                && (currentSurface == currentZ && currentSurface != "0.0" && !currentSurface.isEmpty());
             
             if (isSurfaceSetFromZ)
             {
-                // Button is "active" - show green and display the surface value
+                // Button is "active" from Z - show green and display the surface value
                 button->setButtonText(currentSurface);
                 button->setColour(TextButton::buttonColourId, Colours::green);
                 button->setColour(TextButton::textColourOnId, Colours::white);
+            }
+            else if (isManuallySet && !currentSurface.isEmpty() && currentSurface != "0.0")
+            {
+                // Button is "active" from manual entry - show orange
+                button->setButtonText(currentSurface);
+                button->setColour(TextButton::buttonColourId, Colours::lightgreen);
+                button->setColour(TextButton::textColourOnId, Colours::black);
             }
             else
             {
@@ -841,7 +896,7 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
                 if (rowNumber < probeMetadata.size())
                 {
                     probeMetadata.getReference(rowNumber).implantHoleNumber = newText;
-                    LOGD("Implant hole for row ", rowNumber, " changed to: ", newText);
+                    //LOGD("Implant hole for row ", rowNumber, " changed to: ", newText);
                 }
             };
         }
@@ -869,7 +924,7 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
                 if (rowNumber < probeMetadata.size())
                 {
                     probeMetadata.getReference(rowNumber).inserted = checkbox->getToggleState();
-                    LOGD("Inserted for row ", rowNumber, " changed to: ", checkbox->getToggleState());
+                    //LOGD("Inserted for row ", rowNumber, " changed to: ", checkbox->getToggleState());
                 }
             };
         }
@@ -897,7 +952,7 @@ Component* EphysMetadataGeneratorCanvas::refreshComponentForCell(int rowNumber, 
                 if (rowNumber < probeMetadata.size())
                 {
                     probeMetadata.getReference(rowNumber).onTarget = checkbox->getToggleState();
-                    LOGD("On Target for row ", rowNumber, " changed to: ", checkbox->getToggleState());
+                    //LOGD("On Target for row ", rowNumber, " changed to: ", checkbox->getToggleState());
                 }
             };
         }
@@ -1031,7 +1086,7 @@ bool EphysMetadataGeneratorCanvas::isValidCoordinateInput(const String& text)
 void EphysMetadataGeneratorCanvas::comboBoxChanged(ComboBox* comboBoxThatHasChanged)
 {
     String comboBoxName = comboBoxThatHasChanged->getName();
-    LOGD("ComboBox: ", comboBoxName, " changed to ", comboBoxThatHasChanged->getText());
+    //LOGD("ComboBox: ", comboBoxName, " changed to ", comboBoxThatHasChanged->getText());
     
     // Handle manipulator ComboBox changes
     if (comboBoxName.startsWith("Manipulator_"))
@@ -1102,7 +1157,7 @@ void EphysMetadataGeneratorCanvas::comboBoxChanged(ComboBox* comboBoxThatHasChan
                 }
             }
             
-            LOGD("Manipulator for row ", rowNumber, " changed to: ", probeMetadata[rowNumber].manipulator);
+            //LOGD("Manipulator for row ", rowNumber, " changed to: ", probeMetadata[rowNumber].manipulator);
         }
     }
 }
@@ -1110,7 +1165,7 @@ void EphysMetadataGeneratorCanvas::comboBoxChanged(ComboBox* comboBoxThatHasChan
 
 void EphysMetadataGeneratorCanvas::labelTextChanged(Label* labelThatHasChanged)
 {
-    LOGD("Label: ", labelThatHasChanged->getName(), " changed to ", labelThatHasChanged->getText());
+    //LOGD("Label: ", labelThatHasChanged->getName(), " changed to ", labelThatHasChanged->getText());
 }
 
 void EphysMetadataGeneratorCanvas::buttonClicked(Button* buttonThatWasClicked)
@@ -1224,6 +1279,7 @@ void EphysMetadataGeneratorCanvas::buttonClicked(Button* buttonThatWasClicked)
             newProbe.onTarget = true;
             newProbe.recorded = true;
             newProbe.isManuallyCreated = true;  // Mark as manually created
+            newProbe.surfaceManuallySet = false;
             
             // Add the new probe to the data array
             probeMetadata.add(newProbe);
@@ -1232,7 +1288,7 @@ void EphysMetadataGeneratorCanvas::buttonClicked(Button* buttonThatWasClicked)
             metadataTable->updateContent();
             metadataTable->repaint();
             
-            LOGD("Added new device row: ", newProbe.probe, " (total rows: ", probeMetadata.size(), ")");
+            //LOGD("Added new device row: ", newProbe.probe, " (total rows: ", probeMetadata.size(), ")");
             
             // Close the callout box
             calloutBox.dismiss();
@@ -1266,33 +1322,37 @@ void EphysMetadataGeneratorCanvas::buttonClicked(Button* buttonThatWasClicked)
             TextButton* surfaceButton = static_cast<TextButton*>(buttonThatWasClicked);
             String currentSurface = probeMetadata[rowNumber].surface;
             String currentZ = probeMetadata[rowNumber].z;
+            bool isManuallySet = probeMetadata[rowNumber].surfaceManuallySet;
             
             // Check if surface is currently set from Z (button is active/green)
-            bool isSurfaceSetFromZ = (currentSurface == currentZ && currentSurface != "0.0" && !currentSurface.isEmpty());
+            bool isSurfaceSetFromZ = !isManuallySet
+                && (currentSurface == currentZ && currentSurface != "0.0" && !currentSurface.isEmpty());
             
             if (isSurfaceSetFromZ)
             {
-                // Button is currently active - revert to inactive state
+                // Button is currently active from Z - revert to inactive state
                 probeMetadata.getReference(rowNumber).surface = "0.0";
+                probeMetadata.getReference(rowNumber).surfaceManuallySet = false;
                 
                 // Update button appearance to inactive state
                 surfaceButton->setButtonText("Set Surface");
                 surfaceButton->setColour(TextButton::buttonColourId, findColour (ThemeColours::widgetBackground));
                 surfaceButton->setColour(TextButton::textColourOnId, findColour (ThemeColours::defaultText));
                 
-                LOGD("Surface for row ", rowNumber, " cleared (reverted to inactive)");
+                //LOGD("Surface for row ", rowNumber, " cleared (reverted to inactive)");
             }
             else
             {
-                // Button is currently inactive - set surface from Z value
+                // Button is currently inactive or manually set - set surface from Z value
                 probeMetadata.getReference(rowNumber).surface = currentZ;
+                probeMetadata.getReference(rowNumber).surfaceManuallySet = false;
                 
-                // Update button appearance to active state
+                // Update button appearance to active (from Z) state
                 surfaceButton->setButtonText(currentZ);
                 surfaceButton->setColour(TextButton::buttonColourId, Colours::green);
                 surfaceButton->setColour(TextButton::textColourOnId, Colours::white);
                 
-                LOGD("Surface for row ", rowNumber, " set to Z value: ", currentZ);
+                //LOGD("Surface for row ", rowNumber, " set to Z value: ", currentZ);
             }
             
             // Force a repaint of the button to show the color change
@@ -1319,7 +1379,7 @@ void EphysMetadataGeneratorCanvas::buttonClicked(Button* buttonThatWasClicked)
                 hemisphereButton->setButtonText("L");
                 hemisphereButton->setColour(TextButton::buttonColourId, Colours::lightblue);
                 hemisphereButton->setColour(TextButton::textColourOnId, Colours::black);
-                LOGD("Hemisphere for row ", rowNumber, " changed to L");
+                //LOGD("Hemisphere for row ", rowNumber, " changed to L");
             }
             else if (currentHemisphere == "L")
             {
@@ -1328,7 +1388,7 @@ void EphysMetadataGeneratorCanvas::buttonClicked(Button* buttonThatWasClicked)
                 hemisphereButton->setButtonText("R");
                 hemisphereButton->setColour(TextButton::buttonColourId, Colours::lightcoral);
                 hemisphereButton->setColour(TextButton::textColourOnId, Colours::black);
-                LOGD("Hemisphere for row ", rowNumber, " changed to R");
+                //LOGD("Hemisphere for row ", rowNumber, " changed to R");
             }
             else
             {
@@ -1337,7 +1397,7 @@ void EphysMetadataGeneratorCanvas::buttonClicked(Button* buttonThatWasClicked)
                 hemisphereButton->setButtonText("None");
                 hemisphereButton->setColour(TextButton::buttonColourId, findColour(ThemeColours::widgetBackground));
                 hemisphereButton->setColour(TextButton::textColourOnId, findColour(ThemeColours::defaultText));
-                LOGD("Hemisphere for row ", rowNumber, " changed to None");
+                // LOGD("Hemisphere for row ", rowNumber, " changed to None");
             }
             
             hemisphereButton->repaint();
@@ -1364,7 +1424,7 @@ void EphysMetadataGeneratorCanvas::buttonClicked(Button* buttonThatWasClicked)
                 dyeButton->setColour(TextButton::buttonColourId, Colours::darkblue);
                 dyeButton->setColour(TextButton::textColourOnId, Colours::white);
                 dyeButton->setColour(TextButton::textColourOffId, Colours::white);
-                LOGD("Dye for row ", rowNumber, " changed to DS-DiD");
+                //LOGD("Dye for row ", rowNumber, " changed to DS-DiD");
             }
             else if (currentDye == "DS-DiD")
             {
@@ -1374,7 +1434,7 @@ void EphysMetadataGeneratorCanvas::buttonClicked(Button* buttonThatWasClicked)
                 dyeButton->setColour(TextButton::buttonColourId, findColour(ThemeColours::widgetBackground));
                 dyeButton->setColour(TextButton::textColourOnId, findColour(ThemeColours::defaultText));
                 dyeButton->setColour(TextButton::textColourOffId, findColour(ThemeColours::defaultText));
-                LOGD("Dye for row ", rowNumber, " changed to None");
+                //LOGD("Dye for row ", rowNumber, " changed to None");
             }
             else {
                 // Switch back to CM-DiI
@@ -1383,7 +1443,7 @@ void EphysMetadataGeneratorCanvas::buttonClicked(Button* buttonThatWasClicked)
                 dyeButton->setColour(TextButton::buttonColourId, Colours::darkred);
                 dyeButton->setColour(TextButton::textColourOnId, Colours::white);
                 dyeButton->setColour(TextButton::textColourOffId, Colours::white);
-                LOGD("Dye for row ", rowNumber, " changed to CM-DiI");
+                // LOGD("Dye for row ", rowNumber, " changed to CM-DiI");
             }
             
             // Force a repaint of the button to show the color change
@@ -1420,11 +1480,11 @@ void EphysMetadataGeneratorCanvas::buttonClicked(Button* buttonThatWasClicked)
                 metadataTable->updateContent();
                 metadataTable->repaint();
                 
-                LOGD("Deleted probe row: ", probeIdentifier, " (remaining rows: ", probeMetadata.size(), ")");
+                //LOGD("Deleted probe row: ", probeIdentifier, " (remaining rows: ", probeMetadata.size(), ")");
             }
             else
             {
-                LOGD("Delete cancelled for probe: ", probeIdentifier);
+                //LOGD("Delete cancelled for probe: ", probeIdentifier);
             }
         }
     }
@@ -1444,7 +1504,7 @@ void EphysMetadataGeneratorCanvas::buttonClicked(Button* buttonThatWasClicked)
             {
                 // Update the notes data
                 probeMetadata.getReference(rowNumber).notes = newText;
-                LOGD("Notes for row ", rowNumber, " changed to: ", newText);
+                //LOGD("Notes for row ", rowNumber, " changed to: ", newText);
                 
                 // Update the table to reflect the change
                 metadataTable->updateContent();
@@ -1465,7 +1525,7 @@ void EphysMetadataGeneratorCanvas::buttonClicked(Button* buttonThatWasClicked)
 // StagePositionListener interface implementation
 void EphysMetadataGeneratorCanvas::stagePositionsUpdated(const Array<StagePosition>& positions)
 {
-    LOGD("Received ", positions.size(), " stage positions from HTTP endpoint");
+    //LOGD("Received ", positions.size(), " stage positions from HTTP endpoint");
 
     if (connectButton != nullptr && connectButton->getButtonText() == "Connecting...")
     {
@@ -1498,7 +1558,7 @@ void EphysMetadataGeneratorCanvas::stagePositionsUpdated(const Array<StagePositi
             // AND the manipulator is not empty (to preserve user selections)
             if (!probe.manipulator.isEmpty() && !availableSerialNumbers.contains(probe.manipulator))
             {
-                LOGD("Probe ", probeIndex, " manipulator '", probe.manipulator, "' does not match any available serial numbers - clearing");
+                //LOGD("Probe ", probeIndex, " manipulator '", probe.manipulator, "' does not match any available serial numbers - clearing");
                 
                 // Set manipulator to null (empty string)
                 probe.manipulator = "";
@@ -1510,7 +1570,7 @@ void EphysMetadataGeneratorCanvas::stagePositionsUpdated(const Array<StagePositi
     // If we need to update manipulators, refresh the table to update ComboBoxes
     if (needsManipulatorUpdate)
     {
-        LOGD("Updating table to reflect new serial numbers in ComboBoxes");
+        //LOGD("Updating table to reflect new serial numbers in ComboBoxes");
         metadataTable->updateContent();
     }
     
@@ -1557,12 +1617,12 @@ void EphysMetadataGeneratorCanvas::stagePositionsUpdated(const Array<StagePositi
             }
             if (!found)
             {
-                LOGD("No matching probe found for stage serial number: ", stagePos.serialNumber);
+                //LOGD("No matching probe found for stage serial number: ", stagePos.serialNumber);
             }
         }
     }
     
-    LOGD("Updated ", updatedCount, " out of ", positions.size(), " stage positions");
+    //LOGD("Updated ", updatedCount, " out of ", positions.size(), " stage positions");
     
     // Refresh the table to show updated values
     metadataTable->repaint();
@@ -1626,6 +1686,7 @@ void EphysMetadataGeneratorCanvas::saveCustomParametersToXml(XmlElement* xml)
         probeElement->setAttribute("y", probe.y);
         probeElement->setAttribute("z", probe.z);
         probeElement->setAttribute("surface", probe.surface);
+        probeElement->setAttribute("surfaceManuallySet", probe.surfaceManuallySet);
         probeElement->setAttribute("bregmaX", probe.bregmaX);
         probeElement->setAttribute("bregmaY", probe.bregmaY);
         probeElement->setAttribute("bregmaZ", probe.bregmaZ);
@@ -1655,10 +1716,10 @@ void EphysMetadataGeneratorCanvas::saveCustomParametersToXml(XmlElement* xml)
             XmlElement* serialElement = serialNumbersElement->createNewChildElement("SERIAL");
             serialElement->setAttribute("number", availableSerialNumbers[i]);
         }
-        LOGD("Saved ", availableSerialNumbers.size(), " available serial numbers to XML");
+        //LOGD("Saved ", availableSerialNumbers.size(), " available serial numbers to XML");
     }
     
-    LOGD("Saved ", probeMetadata.size(), " probe metadata entries to XML");
+    //LOGD("Saved ", probeMetadata.size(), " probe metadata entries to XML");
 }
 
 void EphysMetadataGeneratorCanvas::loadCustomParametersFromXml(XmlElement* xml)
@@ -1693,6 +1754,7 @@ void EphysMetadataGeneratorCanvas::loadCustomParametersFromXml(XmlElement* xml)
                 probe.y = probeElement->getStringAttribute("y", "0.0");
                 probe.z = probeElement->getStringAttribute("z", "0.0");
                 probe.surface = probeElement->getStringAttribute("surface", "0.0");
+                probe.surfaceManuallySet = probeElement->getBoolAttribute("surfaceManuallySet", false);
 
                 String bregmaX = probeElement->getStringAttribute("bregmaX", "0.0");
                 probe.bregmaX = isValidCoordinateInput(bregmaX) ? bregmaX : "0.0";
