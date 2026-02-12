@@ -1961,7 +1961,7 @@ Metadata::DataStream EphysMetadataGeneratorCanvas::getLatestMetadata()
         probeConfig.transform_translation.translation = { probeMetadata[i].bregmaX.getFloatValue(),
                                                          probeMetadata[i].bregmaY.getFloatValue(),
                                                          probeMetadata[i].bregmaZ.getFloatValue(),
-                                                         probeMetadata[i].surface.getFloatValue() - probeMetadata[i].z.getFloatValue() };
+                                                         probeMetadata[i].z.getFloatValue() - probeMetadata[i].surface.getFloatValue()};
 
         probeConfig.dye = probeMetadata[i].dye;
         probeConfig.notes = probeMetadata[i].notes;
