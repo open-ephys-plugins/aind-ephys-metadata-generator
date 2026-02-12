@@ -29,13 +29,15 @@ StageListener::StageListener(StagePositionListener* listener, const String& endp
       httpEndpoint(endpoint),
       updateIntervalMs(intervalMs),
       listening(false),
-      shouldMakeRequest(false)
+      shouldMakeRequest(false),
+      alive(std::make_shared<std::atomic<bool>>(true))
 {
     jassert(listener != nullptr);
 }
 
 StageListener::~StageListener()
 {
+    *alive = false;
     stopListening();
 }
 
@@ -140,9 +142,10 @@ void StageListener::run()
                 return;
             
             // Notify listener on the message thread
-            MessageManager::callAsync([this, positions]()
+            auto aliveFlag = alive;
+            MessageManager::callAsync([this, aliveFlag, positions]()
             {
-                if (positionListener != nullptr && listening)
+                if (aliveFlag->load() && positionListener != nullptr && listening)
                 {
                     positionListener->stagePositionsUpdated(positions);
                 }
@@ -151,9 +154,10 @@ void StageListener::run()
         else
         {
             // Notify listener of error on the message thread
-            MessageManager::callAsync([this]()
+            auto aliveFlag = alive;
+            MessageManager::callAsync([this, aliveFlag]()
             {
-                if (positionListener != nullptr && listening)
+                if (aliveFlag->load() && positionListener != nullptr && listening)
                 {
                     positionListener->stagePositionError("Failed to fetch data from server");
                 }
@@ -164,9 +168,10 @@ void StageListener::run()
     {
         // Notify listener of error on the message thread
         String errorMsg = "Exception during stage position fetch: " + String(e.what());
-        MessageManager::callAsync([this, errorMsg]()
+        auto aliveFlag = alive;
+        MessageManager::callAsync([this, aliveFlag, errorMsg]()
         {
-            if (positionListener != nullptr && listening)
+            if (aliveFlag->load() && positionListener != nullptr && listening)
             {
                 positionListener->stagePositionError(errorMsg);
             }
@@ -176,6 +181,8 @@ void StageListener::run()
 
 String StageListener::fetchStagePositions()
 {
+    //LOGC ("StageListener: Fetching stage positions from endpoint: ", httpEndpoint);
+
     ScopedLock lock(requestLock);
     
     if (threadShouldExit())
@@ -193,7 +200,7 @@ String StageListener::fetchStagePositions()
         // Create HTTP request with timeout
         std::unique_ptr<InputStream> inputStream(url.createInputStream(
             URL::InputStreamOptions(URL::ParameterHandling::inAddress)
-                .withConnectionTimeoutMs(5000)  // 5 second connection timeout
+                .withConnectionTimeoutMs(1500)  // 1.5 second connection timeout
                 .withResponseHeaders(nullptr)
                 .withExtraHeaders("Accept: application/json")
                 .withHttpRequestCmd("GET")));
@@ -209,11 +216,18 @@ String StageListener::fetchStagePositions()
         
         if (response.isEmpty())
         {
-            LOGC("StageListener: Empty response from server");
+            LOGE("StageListener: Empty response from server");
             return {};
         }
         
-        //LOGD("StageListener: Received response (", response.length(), " chars): ", response.substring(0, 100), "...");
+        // Detect HTML error pages (e.g. 404) which indicate the stage server is not at this address
+        if (response.trimStart().startsWith("<"))
+        {
+            LOGE("StageListener: Received HTML response instead of JSON (server not found at this address)");
+            return {};
+        }
+        
+        //LOGC("StageListener: Received response (", response.length(), " chars): ", response.substring(0, 100), "...");
         return response;
     }
     catch (const std::exception& e)

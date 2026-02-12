@@ -59,9 +59,8 @@ EphysMetadataGeneratorCanvas::EphysMetadataGeneratorCanvas(EphysMetadataGenerato
     addAndMakeVisible(serverAddressLabel.get());
     
     serverAddressEditor = std::make_unique<TextEditor>("Server Address");
-    serverAddressEditor->setText("10.128.49.150:8080", false);
+    serverAddressEditor->setText("localhost:8080", false);
     serverAddressEditor->setJustification(Justification::centred);
-    serverAddressEditor->setInputRestrictions (0, "0123456789.:");
     serverAddressEditor->onTextChange = [this]()
     {
         if (connectButton != nullptr)
@@ -1639,6 +1638,7 @@ void EphysMetadataGeneratorCanvas::stagePositionError(const String& errorMessage
         connectButton->setColour(TextButton::buttonColourId, Colours::darkred);
         connectButton->setColour(TextButton::textColourOnId, Colours::white);
         connectButton->setColour(TextButton::textColourOffId, Colours::white);
+        stageListener->stopListening(); // Stop trying to fetch positions if there's an error (e.g. server not available)
     }
 }
 
@@ -1812,7 +1812,7 @@ void EphysMetadataGeneratorCanvas::loadCustomParametersFromXml(XmlElement* xml)
     // Load server address setting
     if (serverAddressEditor != nullptr)
     {
-        String savedServerAddress = xml->getStringAttribute("serverAddress", "10.128.49.150:8080");
+        String savedServerAddress = xml->getStringAttribute("serverAddress", "localhost:8080");
         serverAddressEditor->setText(savedServerAddress, false);
         LOGD("Loaded server address: ", savedServerAddress);
         updateStageListenerEndpoint();
@@ -1841,7 +1841,7 @@ void EphysMetadataGeneratorCanvas::updateStageListenerEndpoint()
     }
     
     // Parse the server address to extract IP/hostname and port
-    String host = "10.128.49.150";
+    String host = "localhost";
     int port = 8080;
     
     if (serverAddress.contains(":"))

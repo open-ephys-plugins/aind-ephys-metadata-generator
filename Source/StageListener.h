@@ -77,7 +77,7 @@ public:
      * @param intervalMs Update interval in milliseconds (default: 10000 = 10 seconds)
      */
     StageListener(StagePositionListener* listener, 
-                  const String& endpoint = "http://10.128.49.150:8080/stage/positions",
+                  const String& endpoint = "http://localhost:8080/stage/positions",
                   int intervalMs = 2000);
     
     /**
@@ -141,6 +141,9 @@ private:
     // Thread safety
     CriticalSection requestLock;
     std::atomic<bool> shouldMakeRequest;
+    
+    // Shared flag to prevent async callbacks from accessing a deleted object
+    std::shared_ptr<std::atomic<bool>> alive;
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(StageListener)
 };
