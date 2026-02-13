@@ -271,7 +271,8 @@ Array<StagePosition> StageListener::parseStagePositions(const String& jsonString
                             String serialNumber = probeObj.getProperty ("SerialNumber", "").toString();
                             String stageX = probeObj.getProperty ("Stage_X", 0.0).toString();
                             String stageY = probeObj.getProperty ("Stage_Y", 0.0).toString();
-                            String stageZ = probeObj.getProperty ("Stage_Z", 0.0).toString();
+                            float stageZValue = probeObj.getProperty ("Stage_Z", 0.0);
+                            String stageZ = String(15.0f - stageZValue);
 
                             positions.add (StagePosition (serialNumber, stageX, stageY, stageZ));
 
