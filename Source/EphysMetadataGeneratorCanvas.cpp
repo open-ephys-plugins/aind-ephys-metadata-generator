@@ -85,9 +85,9 @@ EphysMetadataGeneratorCanvas::EphysMetadataGeneratorCanvas(EphysMetadataGenerato
     // Add columns to the table
     metadataTable->getHeader().addColumn("Probe", 1, 80, 80, 300, TableHeaderComponent::visible | TableHeaderComponent::resizable);
     metadataTable->getHeader().addColumn("Manipulator", 2, 100, 100, 300, TableHeaderComponent::visible | TableHeaderComponent::resizable);
-    metadataTable->getHeader().addColumn("Arc Angle", 3, 80, 80, 80, TableHeaderComponent::visible);
-    metadataTable->getHeader().addColumn("Module Angle", 4, 100, 100, 100, TableHeaderComponent::visible);
-    metadataTable->getHeader().addColumn("Rotation", 5, 80, 80, 80, TableHeaderComponent::visible);
+    metadataTable->getHeader().addColumn("A/P Angle", 3, 80, 80, 80, TableHeaderComponent::visible);
+    metadataTable->getHeader().addColumn("M/L Angle", 4, 100, 100, 100, TableHeaderComponent::visible);
+    metadataTable->getHeader().addColumn("Spin", 5, 80, 80, 80, TableHeaderComponent::visible);
     metadataTable->getHeader().addColumn("X", 6, 60, 60, 60, TableHeaderComponent::visible);
     metadataTable->getHeader().addColumn("Y", 7, 60, 60, 60, TableHeaderComponent::visible);
     metadataTable->getHeader().addColumn("Z", 8, 60, 60, 60, TableHeaderComponent::visible);
