@@ -178,6 +178,10 @@ private:
     public:
         CustomDeviceInputComponent() = default;
         ~CustomDeviceInputComponent() override = default;
+        Label deviceNameLabel { "DeviceNameLabel", "Enter device name:" };
+        TextEditor deviceNameEditor;
+        TextButton okButton { "OK" };
+        TextButton cancelButton { "Cancel" };
 
         void paint (Graphics& g) override
         {

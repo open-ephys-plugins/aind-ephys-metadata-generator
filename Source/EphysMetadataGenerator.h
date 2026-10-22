@@ -50,7 +50,7 @@ public:
         Allows the processor to handle variations in the channel configuration or any other parameter
         passed through signal chain. The processor can use this function to modify channel objects that
         will be passed to downstream plugins. */
-    void updateSettings() override;
+    void updateSettings() override { }
 
     /** Defines the functionality of the processor.
         The process method is called every time a new data buffer is available.
@@ -63,10 +63,13 @@ public:
     /** Called when recording starts */
     void stopRecording() override;
 
+    /** Responds to config messages sent while acquisition is not active*/
+    String handleConfigMessage (const String& msg) override;
+
 private:
     
-    /** Holds data stream metadata for this acquisition */
-    Metadata::DataStream dataStreamMetadata;
+    /** Holds data stream metadata for each acquisition */
+    Array<Metadata::DataStream> dataStreamMetadata;
     
     /** Generates an assertion if this class leaks */
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (EphysMetadataGenerator);

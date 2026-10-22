@@ -31,20 +31,16 @@ AudioProcessorEditor* EphysMetadataGenerator::createEditor()
     return editor.get();
 }
 
-void EphysMetadataGenerator::updateSettings()
-{
-    // Needs to count the number of probes and use this to
-    // update the table model in the canvas
-}
-
 void EphysMetadataGenerator::startRecording()
 {
     EphysMetadataGeneratorEditor* thisEditor = dynamic_cast<EphysMetadataGeneratorEditor*> (getEditor());
-    dataStreamMetadata = thisEditor->getLatestMetadata();
+    dataStreamMetadata.add(thisEditor->getLatestMetadata());
 }
 
 void EphysMetadataGenerator::stopRecording()
 {
+    if (dataStreamMetadata.isEmpty())
+        return;
     
     // This function is called when recording stops
     
@@ -68,10 +64,34 @@ void EphysMetadataGenerator::stopRecording()
     // Save the data streams file in the recording directory
     File metadataFile = recordingDirectory.getChildFile (filename);
     
-    // Set end time for all streams and write to JSON
-    Time endTime = Time::getCurrentTime();
-    dataStreamMetadata.stream_end_time = endTime;
+    // Set the stored stream's end time and write to JSON
+    auto& metadata = dataStreamMetadata.getReference(dataStreamMetadata.size() - 1);
+    metadata.stream_end_time = Time::getCurrentTime();
     
-    dataStreamMetadata.writeToJSON (metadataFile);
+    metadata.writeToJSON (metadataFile);
     
+}
+
+String EphysMetadataGenerator::handleConfigMessage(const String& msg)
+{
+    const String command = msg.trim();
+    if (command.equalsIgnoreCase ("clear history"))
+    {
+        dataStreamMetadata.clear();
+        return "Metadata history cleared.";
+    }
+
+    if (command.equalsIgnoreCase ("get metadata"))
+    {
+        Array<var> metadataArray;
+        for (const auto& metadata : dataStreamMetadata)
+        {
+            metadataArray.add (metadata.toJSON());
+        }
+
+        return JSON::toString (var (metadataArray), true);
+    }
+
+    return "Unknown config message: " + msg;
+
 }

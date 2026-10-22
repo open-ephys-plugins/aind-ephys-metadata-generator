@@ -1185,33 +1185,29 @@ void EphysMetadataGeneratorCanvas::buttonClicked(Button* buttonThatWasClicked)
         auto inputComponent = std::make_unique<CustomDeviceInputComponent>();
         inputComponent->setSize(360, 80);
         
-        auto label = std::make_unique<Label>("DeviceNameLabel", "Enter device name:");
+        auto* label = &inputComponent->deviceNameLabel;
         label->setBounds(10, 10, 130, 25);
         label->setFont (FontOptions ("Inter", "Medium", 16.0f));
         label->setJustificationType(Justification::centredLeft);
         inputComponent->addAndMakeVisible(*label);
-        label.release();  // Transfer ownership to parent
         
-        auto textEditor = std::make_unique<TextEditor>();
+        auto* textEditor = &inputComponent->deviceNameEditor;
         textEditor->setName("DeviceNameEditor");
         textEditor->setBounds(140, 10, 210, 25);
         textEditor->setReturnKeyStartsNewLine(false);
         textEditor->setMultiLine(false);
         inputComponent->addAndMakeVisible(*textEditor);
-        auto rawTextEditor = textEditor.get();
-        textEditor.release();  // Transfer ownership to parent
+        auto* rawTextEditor = textEditor;
         
-        auto okButton = std::make_unique<TextButton>("OK");
+        auto* okButton = &inputComponent->okButton;
         okButton->setBounds(115, 45, 60, 25);
         inputComponent->addAndMakeVisible(*okButton);
-        auto rawOkButton = okButton.get();
-        okButton.release();  // Transfer ownership to parent
+        auto* rawOkButton = okButton;
         
-        auto cancelButton = std::make_unique<TextButton>("Cancel");
+        auto* cancelButton = &inputComponent->cancelButton;
         cancelButton->setBounds(185, 45, 60, 25);
         inputComponent->addAndMakeVisible(*cancelButton);
-        auto rawCancelButton = cancelButton.get();
-        cancelButton.release();  // Transfer ownership to parent
+        auto* rawCancelButton = cancelButton;
         
         // Launch the CallOutBox asynchronously (takes ownership of inputComponent)
         auto& calloutBox = CallOutBox::launchAsynchronously(

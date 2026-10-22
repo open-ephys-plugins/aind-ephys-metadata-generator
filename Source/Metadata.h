@@ -240,13 +240,13 @@ struct DataStream
      */
     bool writeToJSON(File file) const;
     
-private:
     /**
      * Convert the entire acquisition to a JSON object
      * @return var object containing all acquisition data
      */
     var toJSON() const;
     
+private:
     /**
      * Convert CoordinateSystem enum to string
      * @param system The coordinate system enum value
