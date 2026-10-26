@@ -27,11 +27,48 @@
 #include "CCFRegions.h"
 
 
+namespace
+{
+class MetadataTableHeader final : public TableHeaderComponent, public TooltipClient
+{
+public:
+    String getTooltip() override
+    {
+        switch (getColumnIdAtX(getMouseXYRelative().x))
+        {
+            case 1:  return "Device name";
+            case 2:  return "Manipulator name in New Scale software";
+            case 3:  return "Arc angle: positive anterior, do not include 14 degree head tilt";
+            case 4:  return "Module angle: positive right";
+            case 5:  return "Spin angle: 0 degrees = electrodes facing mouse left, positive counter-clockwise";
+            case 6:  return "Manipulator X (automatically retrieved from New Scale software)";
+            case 7:  return "Manipulator Y (automatically retrieved from New Scale software)";
+            case 8:  return "Manipulator Z (automatically retrieved from New Scale software)";
+            case 9:  return "Click button when probe is at brain surface, or manually enter surface Z value";
+            case 10: return "Bregma X (measured manipulator coordinate when probe tip is at bregma)";
+            case 11: return "Bregma Y (measured manipulator coordinate when probe tip is at bregma)";
+            case 12: return "Bregma Z (measured manipulator coordinate when probe tip is at bregma)";
+            case 13: return "Probe target structure";
+            case 14: return "Dye coating the probe";
+            case 15: return "Notes about the insertion";
+            case 16: return "Insertion hemisphere";
+            case 17: return "Implant hole used";
+            case 18: return "Was the probe inserted?";
+            case 19: return "Was the probe on target?";
+            case 20: return "Was the data for this probe recorded?";
+            case 21: return "Delete row (only available for non-Neuropixels devices)";
+            default: return {};
+        }
+    }
+};
+}
+
 EphysMetadataGeneratorCanvas::EphysMetadataGeneratorCanvas(EphysMetadataGenerator* processor_)
     : processor(processor_)
 {
     // Create and configure the metadata table
     metadataTable = std::make_unique<TableListBox>();
+    metadataTable->setHeader(std::make_unique<MetadataTableHeader>());
     metadataTable->setModel(this);
     metadataTable->setColour(ListBox::outlineColourId, Colours::grey);
     metadataTable->setOutlineThickness(1);
@@ -85,13 +122,13 @@ EphysMetadataGeneratorCanvas::EphysMetadataGeneratorCanvas(EphysMetadataGenerato
     // Add columns to the table
     metadataTable->getHeader().addColumn("Probe", 1, 80, 80, 300, TableHeaderComponent::visible | TableHeaderComponent::resizable);
     metadataTable->getHeader().addColumn("Manipulator", 2, 100, 100, 300, TableHeaderComponent::visible | TableHeaderComponent::resizable);
-    metadataTable->getHeader().addColumn("A/P Angle", 3, 80, 80, 80, TableHeaderComponent::visible);
-    metadataTable->getHeader().addColumn("M/L Angle", 4, 100, 100, 100, TableHeaderComponent::visible);
+    metadataTable->getHeader().addColumn("Arc Angle", 3, 80, 80, 80, TableHeaderComponent::visible);
+    metadataTable->getHeader().addColumn("Module Angle", 4, 100, 100, 100, TableHeaderComponent::visible);
     metadataTable->getHeader().addColumn("Spin", 5, 80, 80, 80, TableHeaderComponent::visible);
     metadataTable->getHeader().addColumn("X", 6, 60, 60, 60, TableHeaderComponent::visible);
     metadataTable->getHeader().addColumn("Y", 7, 60, 60, 60, TableHeaderComponent::visible);
     metadataTable->getHeader().addColumn("Z", 8, 60, 60, 60, TableHeaderComponent::visible);
-    metadataTable->getHeader().addColumn("Surface", 9, 100, 100, 100, TableHeaderComponent::visible);
+    metadataTable->getHeader().addColumn("Surface Z", 9, 100, 100, 100, TableHeaderComponent::visible);
     metadataTable->getHeader().addColumn("Bregma X", 10, 70, 70, 70, TableHeaderComponent::visible);
     metadataTable->getHeader().addColumn("Bregma Y", 11, 70, 70, 70, TableHeaderComponent::visible);
     metadataTable->getHeader().addColumn("Bregma Z", 12, 70, 70, 70, TableHeaderComponent::visible);
@@ -107,6 +144,7 @@ EphysMetadataGeneratorCanvas::EphysMetadataGeneratorCanvas(EphysMetadataGenerato
 
     metadataTable->getHeader().setPopupMenuActive(false); // Disable default column visibility menu since we have a custom one
     metadataTable->getHeader().addMouseListener (this, true); // Listen for mouse events on the header to show custom context menu
+    tooltipWindow = std::make_unique<TooltipWindow>(this);
 
     // Create some initial values
     initializeTable();
@@ -1916,48 +1954,27 @@ Metadata::DataStream EphysMetadataGeneratorCanvas::getLatestMetadata()
     for (int i = 0; i < probeMetadata.size(); ++i)
     {
 
-        Metadata::ProbeConfig probeConfig;
-        Metadata::EphysAssemblyConfig ephysAssemblyConfig;
-        Metadata::MISModuleConfig misModuleConfig;
-        Metadata::ManipulatorConfig manipulatorConfig;
 
-        String device_name = "Ephys_assembly" + probeMetadata[i].probe;
-
-        stream.active_devices.add (device_name);
-        ephysAssemblyConfig.device_name = device_name;
-
-        manipulatorConfig.device_name = probeMetadata[i].manipulator;
-        manipulatorConfig.coordinate_system.name = "MPM_MANIP_RFB";
-        manipulatorConfig.coordinate_system.origin = "Tip";
-        manipulatorConfig.coordinate_system.axes.add (Metadata::Axis ({ "Axis", "X", "Left_to_right" }));
-        manipulatorConfig.coordinate_system.axes.add (Metadata::Axis ({ "Axis", "Y", "Back_to_front" }));
-        manipulatorConfig.coordinate_system.axes.add (Metadata::Axis ({ "Axis", "Z", "Up_to_down" }));
-        
-        manipulatorConfig.local_axis_positions.translation = { probeMetadata[i].x.getFloatValue(),
-                                                               probeMetadata[i].y.getFloatValue(),
-                                                               probeMetadata[i].z.getFloatValue() };
-
-
-        misModuleConfig.arc_angle = probeMetadata[i].arcAngle.getFloatValue();
-        misModuleConfig.module_angle = probeMetadata[i].moduleAngle.getFloatValue();
-        misModuleConfig.rotation_angle = probeMetadata[i].rotation.getFloatValue();
-
-        probeConfig.device_name = probeMetadata[i].probe;
+        const auto& row = probeMetadata[i];
+        Metadata::ProbeLocation location;
+        location.probe_name = row.probe;
+        location.arc_angle = row.arcAngle.getDoubleValue();
+        location.module_angle = row.moduleAngle.getDoubleValue();
+        location.spin_angle = row.rotation.getDoubleValue();
+        location.x = row.x.getDoubleValue();
+        location.y = row.y.getDoubleValue();
+        location.z = row.z.getDoubleValue();
+        location.surface_z = row.surface.getDoubleValue();
+        location.bregma_x = row.bregmaX.getDoubleValue();
+        location.bregma_y = row.bregmaY.getDoubleValue();
+        location.bregma_z = row.bregmaZ.getDoubleValue();
+        auto ephysAssemblyConfig = Metadata::makeAssemblyLocation(location);
+        stream.active_devices.add(ephysAssemblyConfig.device_name);
+        auto& probeConfig = ephysAssemblyConfig.probes.getReference(0);
         
         // Convert target structure string to Region struct using CCFRegionList
         CCFRegionList regionList;
-        probeConfig.primary_targeted_structure = regionList.findRegionByAcronym(probeMetadata[i].targetStructure);
-        
-        probeConfig.coordinate_system.name = "MPM_MANIP_RFB";
-        probeConfig.coordinate_system.origin = "Tip";
-        probeConfig.coordinate_system.axes.add (Metadata::Axis ({ "Axis", "X", "Left_to_right" }));
-        probeConfig.coordinate_system.axes.add (Metadata::Axis ({ "Axis", "Y", "Back_to_front" }));
-        probeConfig.coordinate_system.axes.add (Metadata::Axis ({ "Axis", "Z", "Up_to_down" }));
-        
-        probeConfig.transform_translation.translation = { probeMetadata[i].bregmaX.getFloatValue(),
-                                                         probeMetadata[i].bregmaY.getFloatValue(),
-                                                         probeMetadata[i].bregmaZ.getFloatValue(),
-                                                         probeMetadata[i].z.getFloatValue() - probeMetadata[i].surface.getFloatValue()};
+        probeConfig.primary_targeted_structure = regionList.findRegionByAcronym(row.targetStructure);
 
         probeConfig.dye = probeMetadata[i].dye;
         probeConfig.notes = probeMetadata[i].notes;
@@ -1967,9 +1984,6 @@ Metadata::DataStream EphysMetadataGeneratorCanvas::getLatestMetadata()
         probeConfig.on_target = probeMetadata[i].onTarget;
         probeConfig.recorded = probeMetadata[i].recorded;
         
-        ephysAssemblyConfig.modules.add (misModuleConfig);
-        ephysAssemblyConfig.manipulator = manipulatorConfig;
-        ephysAssemblyConfig.probes.add (probeConfig);
 
         stream.configurations.add (ephysAssemblyConfig);
     }

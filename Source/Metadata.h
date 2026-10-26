@@ -26,6 +26,8 @@
 
 #include <VisualizerEditorHeaders.h>
 #include "CCFRegions.h"
+#include <variant>
+#include <vector>
 
 /**
     The editor for the EphysMetadataGenerator
@@ -40,8 +42,8 @@ namespace Metadata
 
 enum CoordinateSystem
 {
-    BREGMA_ARID = 0,
-    MPM_MANIP_RFB = 1
+    BREGMA_RAS = 0,
+    MIS_MANIP_RPI = 1
 };
 
 struct Axis
@@ -72,6 +74,9 @@ struct CoordinateSystemObject
     
     /** Axis unit */
     String axis_unit = "millimeter";
+
+    /** Optional handedness */
+    var handedness;
 };
 
 struct Translation
@@ -81,6 +86,9 @@ struct Translation
     
     /** Translation values */
     Array<double> translation;
+
+    /** Frame in which the translation is defined */
+    String reference_coordinate_system = "global";
 };
 
 struct Rotation
@@ -93,6 +101,11 @@ struct Rotation
     
     /** Angles unit */
     String angles_unit = "degrees";
+
+    String axis_order = "xyz";
+    String reference_coordinate_system = "global";
+    String rotation_direction = "right_hand";
+    String pivot = "global";
 };
 
 struct Modality
@@ -123,10 +136,12 @@ struct ProbeConfig
     
     /** Coordinate system */
     CoordinateSystemObject coordinate_system;
+
+    /** Local coordinate system */
+    CoordinateSystemObject local_coordinate_system;
     
-    /** Transform */
-    Translation transform_translation; // Translation part of the transform
-    Rotation transform_rotation; // Rotation part of the transform
+    /** Transforms in application order */
+    std::vector<std::variant<Rotation, Translation>> transform;
     
     /** Dye */
     String dye;
@@ -160,6 +175,9 @@ struct ManipulatorConfig
     
     /** Coordinate system */
     CoordinateSystemObject coordinate_system;
+
+    /** Local coordinate system */
+    CoordinateSystemObject local_coordinate_system;
     
     /** Local axis positions */
     Translation local_axis_positions;
@@ -177,7 +195,7 @@ struct MISModuleConfig
     double module_angle = 0.0;
     
     /** Rotation angle */
-    double rotation_angle = 0.0;
+    var rotation_angle; // null unless explicitly measured
     
     /** Angle unit */
     String angle_unit = "degrees";
@@ -203,6 +221,23 @@ struct EphysAssemblyConfig
     /** Modules */
     Array<MISModuleConfig> modules;
 };
+struct ProbeLocation
+{
+    String probe_name;
+    double arc_angle = 0.0;
+    double module_angle = 0.0;
+    double spin_angle = 0.0;
+    double x = 0.0;
+    double y = 0.0;
+    double z = 0.0;
+    double surface_z = 0.0;
+    double bregma_x = 0.0;
+    double bregma_y = 0.0;
+    double bregma_z = 0.0;
+};
+
+/** Construct the location fields of an assembly using the probeMetadata.py conventions. */
+EphysAssemblyConfig makeAssemblyLocation(const ProbeLocation& location);
 
 struct DataStream
 {

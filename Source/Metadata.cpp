@@ -26,6 +26,64 @@
 namespace Metadata
 {
 
+EphysAssemblyConfig makeAssemblyLocation(const ProbeLocation& location)
+{
+    EphysAssemblyConfig assembly;
+    assembly.device_name = "Ephys Assembly " + location.probe_name;
+    assembly.manipulator.device_name = "Manipulator " + location.probe_name;
+    assembly.manipulator.coordinate_system.name = "MIS_MANIP_RPI";
+    assembly.manipulator.coordinate_system.origin = "Origin";
+    assembly.manipulator.coordinate_system.axes.add({ "Axis", "X", "Left_to_right" });
+    assembly.manipulator.coordinate_system.axes.add({ "Axis", "Y", "Anterior_to_posterior" });
+    assembly.manipulator.coordinate_system.axes.add({ "Axis", "Z", "Superior_to_inferior" });
+    assembly.manipulator.local_coordinate_system = assembly.manipulator.coordinate_system;
+    assembly.manipulator.local_axis_positions.translation = { location.x, location.y, location.z };
+
+    MISModuleConfig module;
+    module.arc_angle = location.arc_angle;
+    module.module_angle = location.module_angle;
+    assembly.modules.add(module);
+
+    ProbeConfig probe;
+    probe.device_name = location.probe_name;
+    probe.coordinate_system.name = "PROBE_RUF";
+    probe.coordinate_system.origin = "Tip";
+    probe.coordinate_system.axes.add({ "Axis", "X", "Left_to_right" });
+    probe.coordinate_system.axes.add({ "Axis", "Y", "Down_to_up" });
+    probe.coordinate_system.axes.add({ "Axis", "Z", "Back_to_front" });
+    probe.local_coordinate_system = probe.coordinate_system;
+
+    auto addRotation = [&probe](std::initializer_list<double> angles,
+                                const String& frame, const String& direction)
+    {
+        Rotation rotation;
+        rotation.angles.addArray(angles.begin(), static_cast<int>(angles.size()));
+        rotation.reference_coordinate_system = frame;
+        rotation.rotation_direction = direction;
+        probe.transform.emplace_back(rotation);
+    };
+    auto addTranslation = [&probe](std::initializer_list<double> values)
+    {
+        Translation translation;
+        translation.translation.addArray(values.begin(), static_cast<int>(values.size()));
+        translation.reference_coordinate_system = "local";
+        probe.transform.emplace_back(translation);
+    };
+
+    // Transform order and handedness follow Resources/probeMetadata.py.
+    addRotation({ 90.0, 0.0, -90.0 }, "global", "right_hand");
+    addRotation({ location.arc_angle - 14.0, 0.0, 0.0 }, "global", "left_hand");
+    addRotation({ location.module_angle, 0.0, 0.0 }, "local", "left_hand");
+    addRotation({ 0.0, location.spin_angle, 0.0 }, "local", "left_hand");
+    addTranslation({ location.y - location.bregma_y,
+                     -(location.z - location.bregma_z),
+                     -(location.x - location.bregma_x) });
+    addTranslation({ 0.0, -(location.z - location.surface_z), 0.0 });
+    assembly.probes.add(probe);
+
+    return assembly;
+}
+
 bool DataStream::writeToJSON(File file) const
 {
     try
@@ -97,10 +155,10 @@ String DataStream::coordinateSystemToString(CoordinateSystem system)
 {
     switch (system)
     {
-        case BREGMA_ARID:
-            return "BREGMA_ARID";
-        case MPM_MANIP_RFB:
-            return "MPM_MANIP_RFB";
+        case BREGMA_RAS:
+            return "BREGMA_RAS";
+        case MIS_MANIP_RPI:
+            return "MIS_MANIP_RPI";
         default:
             return "UNKNOWN";
     }
@@ -121,6 +179,7 @@ var DataStream::coordinateSystemObjectToJSON(const CoordinateSystemObject& coord
     jsonObj->setProperty("axes", axesArray);
     
     jsonObj->setProperty("axis_unit", coordSystem.axis_unit);
+    jsonObj->setProperty("handedness", coordSystem.handedness);
     
     return var(jsonObj);
 }
@@ -145,6 +204,7 @@ var DataStream::translationToJSON(const Translation& translation)
         translationArray.append(translation.translation[i]);
     }
     jsonObj->setProperty("translation", translationArray);
+    jsonObj->setProperty("reference_coordinate_system", translation.reference_coordinate_system);
     
     return var(jsonObj);
 }
@@ -161,6 +221,10 @@ var DataStream::rotationToJSON(const Rotation& rotation)
     }
     jsonObj->setProperty("angles", anglesArray);
     jsonObj->setProperty("angles_unit", rotation.angles_unit);
+    jsonObj->setProperty("axis_order", rotation.axis_order);
+    jsonObj->setProperty("reference_coordinate_system", rotation.reference_coordinate_system);
+    jsonObj->setProperty("rotation_direction", rotation.rotation_direction);
+    jsonObj->setProperty("pivot", rotation.pivot);
     
     return var(jsonObj);
 }
@@ -190,15 +254,15 @@ var DataStream::probeConfigToJSON(const ProbeConfig& probe)
     jsonObj->setProperty("other_targeted_structure", probe.other_targeted_structure);
     jsonObj->setProperty("atlas_coordinate", probe.atlas_coordinate);
     jsonObj->setProperty("coordinate_system", coordinateSystemObjectToJSON(probe.coordinate_system));
+    jsonObj->setProperty("local_coordinate_system", coordinateSystemObjectToJSON(probe.local_coordinate_system));
     
     Array<var> transformArrayData;
-    if (probe.transform_translation.translation.size() > 0)
+    for (const auto& transform : probe.transform)
     {
-        transformArrayData.add(translationToJSON(probe.transform_translation));
-    }
-    if (probe.transform_rotation.angles.size() > 0)
-    {
-        transformArrayData.add(rotationToJSON(probe.transform_rotation));
+        if (const auto* rotation = std::get_if<Rotation>(&transform))
+            transformArrayData.add(rotationToJSON(*rotation));
+        else if (const auto* translation = std::get_if<Translation>(&transform))
+            transformArrayData.add(translationToJSON(*translation));
     }
 
     jsonObj->setProperty("transform", var(transformArrayData));
@@ -229,6 +293,7 @@ var DataStream::manipulatorConfigToJSON(const ManipulatorConfig& manipulator)
     jsonObj->setProperty("object_type", manipulator.object_type);
     jsonObj->setProperty("device_name", manipulator.device_name);
     jsonObj->setProperty("coordinate_system", coordinateSystemObjectToJSON(manipulator.coordinate_system));
+    jsonObj->setProperty("local_coordinate_system", coordinateSystemObjectToJSON(manipulator.local_coordinate_system));
     jsonObj->setProperty("local_axis_positions", translationToJSON(manipulator.local_axis_positions));
     return var(jsonObj);
 }

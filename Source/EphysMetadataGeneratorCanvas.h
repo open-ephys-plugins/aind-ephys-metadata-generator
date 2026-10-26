@@ -87,6 +87,8 @@ private:
 
     /** Table component for displaying metadata */
     std::unique_ptr<TableListBox> metadataTable;
+    /** Displays tooltips while hovering over column headers */
+    std::unique_ptr<TooltipWindow> tooltipWindow;
 
     /** Sample data structure for table rows */
     struct ProbeMetadata {
