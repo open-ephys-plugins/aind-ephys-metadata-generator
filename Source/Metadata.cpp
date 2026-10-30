@@ -74,10 +74,10 @@ EphysAssemblyConfig makeAssemblyLocation(const ProbeLocation& location)
     addRotation({ 90.0, 0.0, -90.0 }, "global", "right_hand");
     addRotation({ location.arc_angle - 14.0, 0.0, 0.0 }, "global", "left_hand");
     addRotation({ location.module_angle, 0.0, 0.0 }, "local", "left_hand");
-    addRotation({ 0.0, location.spin_angle, 0.0 }, "local", "left_hand");
     addTranslation({ location.y - location.bregma_y,
                      -(location.z - location.bregma_z),
                      -(location.x - location.bregma_x) });
+    addRotation ({ 0.0, location.spin_angle, 0.0 }, "local", "left_hand");
     addTranslation({ 0.0, -(location.z - location.surface_z), 0.0 });
     assembly.probes.add(probe);
 
